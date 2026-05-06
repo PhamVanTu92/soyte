@@ -8,12 +8,11 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm@10
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json ./
 
 # Install production dependencies only
 # Bao gồm cả tedious (MSSQL) và pg/pg-hstore (PostgreSQL)
-# để image dùng được với cả hai DB qua DB_DIALECT env
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --prod --no-frozen-lockfile
 
 # ─────────────────────────────────────────────
 # Stage 2: Runtime image
