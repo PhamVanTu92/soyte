@@ -38,19 +38,9 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
 
-// CORS — development: cho phép tất cả; production: chỉ cho phép ALLOWED_ORIGINS
-const isDev = process.env.NODE_ENV !== 'production';
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '').split(',').map(o => o.trim()).filter(Boolean);
-const allowAllOrigins = allowedOrigins.includes('*');
+// CORS — cho phép tất cả origin (sẽ giới hạn sau bằng ALLOWED_ORIGINS)
 app.use(cors({
-  origin: (origin, callback) => {
-    // Cho phép: dev mode / request không có origin (mobile app, Postman, curl) /
-    //           chưa cấu hình danh sách / wildcard '*' / origin nằm trong danh sách
-    if (isDev || !origin || allowedOrigins.length === 0 || allowAllOrigins || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    callback(new Error(`Not allowed by CORS: ${origin}`));
-  },
+  origin: true,
   credentials: true,
 }));
 
