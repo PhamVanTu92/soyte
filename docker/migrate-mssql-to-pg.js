@@ -23,7 +23,7 @@ const path = require('path');
 // Cấu hình nguồn — MSSQL
 // ─────────────────────────────────────────────────────────────────
 const SRC = {
-  host:     process.env.MSSQL_HOST || '160.30.252.5',
+  host:     process.env.MSSQL_HOST || '192.168.100.5',
   port:     parseInt(process.env.MSSQL_PORT || '1433'),
   database: process.env.MSSQL_DB   || 'SUCKHUOETHUDO_DB',
   username: process.env.MSSQL_USER || 'api_user',
