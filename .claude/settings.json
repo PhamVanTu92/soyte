@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -C \"E:/Project/soyte_be-main/soyte_be-main\" add -A && git -C \"E:/Project/soyte_be-main/soyte_be-main\" diff --cached --quiet || (git -C \"E:/Project/soyte_be-main/soyte_be-main\" commit -m \"auto: session changes\" && git -C \"E:/Project/soyte_be-main/soyte_be-main\" push origin main)",
+            "statusMessage": "Đang đẩy code lên GitHub..."
+          }
+        ]
+      }
+    ]
+  }
+}
