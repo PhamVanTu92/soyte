@@ -10,6 +10,16 @@ const ApiError = require('../utils/ApiError');
 const errorHandler = (err, req, res, next) => {
   let { statusCode, message } = err;
 
+  // CORS errors → 403
+  if (message && message.startsWith('Not allowed by CORS')) {
+    return res.status(403).json({
+      success: false,
+      status: 'error',
+      statusCode: 403,
+      message,
+    });
+  }
+
   // Set default status code if not provided
   if (!statusCode) {
     statusCode = 500;
