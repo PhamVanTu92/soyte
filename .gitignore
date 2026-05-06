@@ -1,0 +1,29 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+logs/
+dist/
+
+# SSL certs (nhạy cảm)
+*.pem
+*.key
+*.crt
+
+# Uploads (file người dùng, không cần commit)
+uploads/*
+!uploads/.gitkeep
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Docker data
+docker/data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Lock files (chọn 1: pnpm hoặc npm)
+package-lock.json
+

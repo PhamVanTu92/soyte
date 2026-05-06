@@ -1,0 +1,98 @@
+version: '3.9'
+
+# ── PostgreSQL variant ────────────────────────────────────────────
+# Dùng: docker-compose -f docker-compose.postgres.yml up -d
+#
+# Ưu điểm so với MSSQL:
+#   - Image nhẹ hơn (~300 MB vs ~1.5 GB)
+#   - postgres image tự tạo DB + user qua env, không cần setup-db.js
+#   - Không cần SA_PASSWORD
+#   - Healthcheck đơn giản hơn (pg_isready)
+# ─────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL 16 ────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: soyte-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       "${DB_NAME:-SUCKHUOETHUDO_DB}"
+      POSTGRES_USER:     "${DB_USER:-api_user}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-Api@123456}"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${PGPORT:-5432}:5432"    # expose ra host để dùng pgAdmin / DBeaver
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: >
+        pg_isready
+        -U "${DB_USER:-api_user}"
+        -d "${DB_NAME:-SUCKHUOETHUDO_DB}"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - soyte-net
+
+  # ── Node.js Backend ──────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: soyte-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      NODE_ENV: "${NODE_ENV:-production}"
+
+      # Database — trỏ vào service postgres trong mạng nội bộ
+      DB_HOST:     postgres
+      DB_PORT:     5432
+      DB_NAME:     "${DB_NAME:-SUCKHUOETHUDO_DB}"
+      DB_USER:     "${DB_USER:-api_user}"
+      DB_PASSWORD: "${DB_PASSWORD:-Api@123456}"
+      DB_DIALECT:  postgres
+
+      # Không cần SA_PASSWORD khi dùng PostgreSQL
+
+      # JWT
+      JWT_SECRET:     "${JWT_SECRET}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-7d}"
+
+      # CORS
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}"
+      FRONTEND_URL:    "${FRONTEND_URL:-http://localhost:5173}"
+
+      # Email
+      EMAIL_HOST: "${EMAIL_HOST:-smtp.example.com}"
+      EMAIL_PORT: "${EMAIL_PORT:-587}"
+      EMAIL_USER: "${EMAIL_USER:-}"
+      EMAIL_PASS: "${EMAIL_PASS:-}"
+
+      # Giới hạn
+      EXPORT_MAX_ROWS: "${EXPORT_MAX_ROWS:-5000}"
+      STATS_MAX_FETCH: "${STATS_MAX_FETCH:-2000}"
+
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - soyte-net
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  soyte-net:
+    driver: bridge

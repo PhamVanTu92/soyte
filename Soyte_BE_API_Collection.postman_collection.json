@@ -1,0 +1,1632 @@
+{
+  "info": {
+    "_postman_id": "b9646f90-1c64-4e3a-9e12-3b2d1c1a9f1a",
+    "name": "Soyte_BE_API_Collection",
+    "description": "Toàn bộ API của dự án Backend Sở Y Tế (Soyte_BE)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@test.com\",\n  \"password\": \"password123\",\n  \"full_name\": \"Test User\",\n  \"unit\": \"Unit A\",\n  \"username\": \"testuser\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@test.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/check-token/YOUR_TOKEN_HERE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "check-token",
+                "YOUR_TOKEN_HERE"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Confirm Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/confirm-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "confirm-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"YOUR_TOKEN_HERE\",\n  \"password\": \"newpassword123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/change-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"password123\",\n  \"newPassword\": \"newpassword123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/forgot-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Resend Confirmation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/resend-confirmation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "resend-confirmation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@test.com\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Posts (Tin tức/Bài viết)",
+      "item": [
+        {
+          "name": "Lấy danh sách Bài viết (Công khai)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/posts?page=1&limit=10&status=published",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "published"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy Bài viết theo Categories (Trang chủ) (Công khai)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/posts/by-categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "by-categories"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"category_id\": 1,\n    \"limit\": 5\n  }\n]"
+            }
+          }
+        },
+        {
+          "name": "Lấy Chi tiết Bài viết",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/posts/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Post (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/posts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Tiêu đề bài viết\",\n  \"content\": \"Nội dung...\",\n  \"status\": \"published\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Post (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/posts/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Tiêu đề bài viết đã sửa\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Post (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/posts/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Fetch News from 3rd Party",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/posts/sub",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "sub"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schedules (Lịch công tác)",
+      "item": [
+        {
+          "name": "Get All Schedules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schedules"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Schedule by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/schedules/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Leaders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/leaders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "leaders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Schedule (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schedules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Họp giao ban\",\n  \"start_time\": \"2024-05-20T08:00:00.000Z\",\n  \"end_time\": \"2024-05-20T10:00:00.000Z\",\n  \"location\": \"Phòng họp A\",\n  \"content\": \"Báo cáo tiến độ tuần\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Schedule (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/schedules/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location\": \"Phòng họp B\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Approve Schedule (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/schedules/1/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "1",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel Schedule (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/schedules/1/cancel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "1",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Schedule (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/schedules/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export Schedules Excel",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/schedules/export/excel?start_date=2024-05-01&end_date=2024-05-31",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "export",
+                "excel"
+              ],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "2024-05-01"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2024-05-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export Schedules PDF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/schedules/export/pdf?start_date=2024-05-01&end_date=2024-05-31",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "export",
+                "pdf"
+              ],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "2024-05-01"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2024-05-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Attachment to Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/schedules/1/attachments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "schedules",
+                "1",
+                "attachments"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Attachment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/attachments/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "attachments",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users (Admin - Bỏ qua bản thân & Kèm mô tả quyền)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users?page=1&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "unit",
+                  "value": "Sở Y Tế"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User by ID (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update User (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"user\",\n  \"full_name\": \"User Full Name\",\n  \"status\": \"active\",\n  \"is_verified\": true,\n  \"username\": \"newusername\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Assign Permissions to User (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/1/permissions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1",
+                "permissions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\"posts\", \"users\", \"work_schedule\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete User (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Permissions (Quản lý Quyền)",
+      "item": [
+        {
+          "name": "Get All Permissions (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/permissions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "permissions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Permission by ID (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/permissions/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "permissions",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Permission (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/permissions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "permissions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"new_permission\",\n  \"description\": \"Mô tả quyền mới\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Permission (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/permissions/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "permissions",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Mô tả quyền đã cập nhật\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Permission (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/permissions/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "permissions",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forms (Biểu mẫu)",
+      "item": [
+        {
+          "name": "Create Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/forms",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "forms"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Khảo sát ý kiến\",\n  \"description\": \"Mô tả mẫu khảo sát\",\n  \"type\": \"survey\",\n  \"data\": \"[{\\\"field_name\\\": \\\"Điểm\\\"}]\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Lists of Forms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/forms",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "forms"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Form by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/forms/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "forms",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Form",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/forms/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "forms",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"inactive\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feedbacks (Đánh giá từ Form)",
+      "item": [
+        {
+          "name": "Submit Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/feedbacks",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "feedbacks"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"form_id\": 1,\n  \"creator_name\": \"Nguyễn Văn A\",\n  \"type\": \"evaluate\",\n  \"submission_data\": [\n    {\n      \"name\": \"Khả năng tiếp cận\",\n      \"option\": [\n        {\n          \"ratingVote\": {\n            \"value\": 5\n          }\n        }\n      ]\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Feedbacks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/feedbacks",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "feedbacks"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "evaluate",
+                  "description": "Lọc theo loại: reflect (phản ánh) hoặc evaluate (đánh giá)"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Feedback By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/feedbacks/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "feedbacks",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Feedback Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/feedbacks/stats?startDate=2024-01-01&endDate=2024-12-31&type=evaluate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "feedbacks",
+                "stats"
+              ],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-12-31"
+                },
+                {
+                  "key": "type",
+                  "value": "evaluate",
+                  "description": "Lọc theo loại: reflect hoặc evaluate"
+                }
+              ]
+            },
+            "description": "Thống kê 12 tháng gần đây (categories) và điểm trung bình theo form (series trong summary)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Social Facilities (Cơ sở bảo trợ xã hội)",
+      "item": [
+        {
+          "name": "Get All Facilities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/social-facilities?type=hospital&name=yên",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "social-facilities"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "hospital",
+                  "description": "Lọc theo loại cơ sở (ví dụ: hospital, social_center, ...)"
+                },
+                {
+                  "key": "name",
+                  "value": "yên",
+                  "description": "Tìm kiếm theo tên cơ sở"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Facility by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/social-facilities/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "social-facilities",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Facility",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/social-facilities",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "social-facilities"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cơ sở bảo trợ A\",\n  \"type\": \"Type 1\",\n  \"category\": \"Category 1\",\n  \"address\": \"123 Đường ABC\",\n  \"phone\": \"0123456789\",\n  \"coords\": [10.123, 106.123],\n  \"description\": \"Mô tả cơ sở\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Facility",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/social-facilities/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "social-facilities",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cơ sở bảo trợ A đã sửa\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Facility",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/social-facilities/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "social-facilities",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Upload",
+      "item": [
+        {
+          "name": "Upload File",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "upload"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crawler (Cào dữ liệu)",
+      "item": [
+        {
+          "name": "Get Crawled Schedules (Lịch đã cào)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/crawled-schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "crawled-schedules"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Email Confirm",
+      "item": [
+        {
+          "name": "Lấy cấu hình Email",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/email-confirm",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "email-confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cập nhật cấu hình Email",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/email-confirm",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "email-confirm"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"smtp_host\": \"smtp.gmail.com\",\n  \"smtp_port\": 587,\n  \"smtp_secure\": false,\n  \"smtp_user\": \"your_email@gmail.com\",\n  \"smtp_pass\": \"your_app_password\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports (Báo cáo)",
+      "item": [
+        {
+          "name": "Báo cáo DCBC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"survey_key\": [\"survey1\", \"survey2\"],\n  \"unit_id\": [1, 2],\n  \"unit_type\": \"hospital\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reports/dcbc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "dcbc"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Báo cáo TCT01",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"survey_key\": [\"survey1\", \"survey2\"],\n  \"unit_id\": [1, 2],\n  \"unit_type\": \"hospital\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reports/tct01",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "tct01"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Báo cáo KSHL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-12-31\",\n  \"survey_key\": [\"survey1\", \"survey2\"],\n  \"unit_id\": [1, 2],\n  \"unit_type\": \"hospital\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reports/kshl",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "kshl"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://localhost:7002",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzczNjMzODcwLCJleHAiOjE3NzM3MjAyNzB9.nVNLiPyWU7mGg9EY_EfEQdanexV-GQ5PADEi5iLMjJ0",
+      "type": "string"
+    }
+  ]
+}

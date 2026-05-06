@@ -1,0 +1,58 @@
+version: '3.9'
+
+# ── Production compose ────────────────────────────────────────────
+# Dùng khi PostgreSQL đã chạy sẵn trên server (aaPanel, managed DB, ...)
+# Chỉ chạy container backend — không spin up DB container.
+#
+# Dùng:
+#   docker-compose -f docker-compose.prod.yml up -d
+# ─────────────────────────────────────────────────────────────────
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: soyte-backend:latest
+    container_name: soyte-backend
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+
+      # Khi chạy trên cùng server với aaPanel:
+      # DB_HOST=127.0.0.1 (kết nối nội bộ, không qua firewall)
+      DB_HOST:     "${DB_HOST:-127.0.0.1}"
+      DB_PORT:     "${DB_PORT:-35432}"
+      DB_NAME:     "${DB_NAME:-suckhuoethudo_db}"
+      DB_USER:     "${DB_USER:-postgres}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_DIALECT:  postgres
+      DB_SSL:      "${DB_SSL:-false}"
+
+      JWT_SECRET:     "${JWT_SECRET}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-7d}"
+
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
+      FRONTEND_URL:    "${FRONTEND_URL}"
+
+      EMAIL_HOST: "${EMAIL_HOST}"
+      EMAIL_PORT: "${EMAIL_PORT:-587}"
+      EMAIL_USER: "${EMAIL_USER}"
+      EMAIL_PASS: "${EMAIL_PASS}"
+
+      EXPORT_MAX_ROWS: "${EXPORT_MAX_ROWS:-5000}"
+      STATS_MAX_FETCH: "${STATS_MAX_FETCH:-2000}"
+
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - uploads_data:/app/uploads
+    # Không cần depends_on vì DB là external service
+    extra_hosts:
+      # Cho phép container truy cập host (127.0.0.1 → IP thật của server)
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  uploads_data:
+    driver: local

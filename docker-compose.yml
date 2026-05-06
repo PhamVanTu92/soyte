@@ -1,0 +1,92 @@
+version: '3.9'
+
+services:
+
+  # ── SQL Server 2022 ──────────────────────────────────────────────
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: soyte-sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "${SA_PASSWORD:-SaDockerP@ss2024}"
+      MSSQL_PID: "Developer"          # miễn phí cho dev/test
+    ports:
+      - "${MSSQL_PORT:-1433}:1433"    # expose ra host để dùng SSMS / Azure Data Studio
+    volumes:
+      - mssql_data:/var/opt/mssql    # dữ liệu bền vững
+    healthcheck:
+      # sqlcmd -No: bỏ qua kiểm tra certificate (self-signed trong Docker)
+      test: >
+        /opt/mssql-tools18/bin/sqlcmd
+        -S localhost -U sa -P "$$SA_PASSWORD"
+        -Q "SELECT 1" -No -b
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+    networks:
+      - soyte-net
+
+  # ── Node.js Backend ──────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: soyte-backend
+    restart: unless-stopped
+    depends_on:
+      sqlserver:
+        condition: service_healthy   # chờ MSSQL sẵn sàng rồi mới khởi động
+    environment:
+      # Server
+      PORT: 3000
+      NODE_ENV: "${NODE_ENV:-production}"
+
+      # Database — trỏ vào service sqlserver trong mạng nội bộ
+      DB_HOST: sqlserver
+      DB_PORT: 1433
+      DB_NAME: "${DB_NAME:-SUCKHUOETHUDO_DB}"
+      DB_USER: "${DB_USER:-api_user}"
+      DB_PASSWORD: "${DB_PASSWORD:-Api@123456}"
+      DB_DIALECT: mssql
+
+      # SA password — chỉ dùng lúc setup-db.js khởi tạo lần đầu
+      SA_PASSWORD: "${SA_PASSWORD:-SaDockerP@ss2024}"
+
+      # JWT
+      JWT_SECRET: "${JWT_SECRET}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-7d}"
+
+      # CORS
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:5173}"
+
+      # Email
+      EMAIL_HOST: "${EMAIL_HOST:-smtp.example.com}"
+      EMAIL_PORT: "${EMAIL_PORT:-587}"
+      EMAIL_USER: "${EMAIL_USER:-}"
+      EMAIL_PASS: "${EMAIL_PASS:-}"
+
+      # Giới hạn
+      EXPORT_MAX_ROWS: "${EXPORT_MAX_ROWS:-5000}"
+      STATS_MAX_FETCH: "${STATS_MAX_FETCH:-2000}"
+
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - uploads_data:/app/uploads    # file upload bền vững
+    networks:
+      - soyte-net
+
+# ── Volumes ──────────────────────────────────────────────────────
+volumes:
+  mssql_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+# ── Networks ──────────────────────────────────────────────────────
+networks:
+  soyte-net:
+    driver: bridge
