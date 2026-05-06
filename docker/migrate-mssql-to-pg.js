@@ -179,7 +179,25 @@ async function main() {
   console.log('\n🏗️  Tạo schema PostgreSQL (sync force)...');
   const pgDb = loadModels(pg);
   await pg.sync({ force: true });
-  console.log('  ✅ Tất cả bảng đã được tạo.\n');
+
+  // Chuyển tất cả VARCHAR(255) → TEXT để tránh lỗi "value too long"
+  // (MSSQL lưu NVARCHAR(MAX) nhưng Sequelize model khai báo STRING = VARCHAR(255))
+  await pg.query(`
+    DO $$
+    DECLARE r RECORD;
+    BEGIN
+      FOR r IN
+        SELECT table_name, column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND data_type = 'character varying'
+          AND character_maximum_length = 255
+      LOOP
+        EXECUTE format('ALTER TABLE %I ALTER COLUMN %I TYPE TEXT', r.table_name, r.column_name);
+      END LOOP;
+    END $$;
+  `);
+  console.log('  ✅ Tất cả bảng đã tạo + VARCHAR(255) → TEXT.\n');
 
   // 3. Tắt kiểm tra FK trong session
   await pg.query("SET session_replication_role = replica");
