@@ -874,10 +874,25 @@ const options = {
         get: {
           tags: ['Feedbacks'],
           summary: 'Dashboard giám sát chất lượng (biểu đồ evaluate)',
-          description: 'Không truyền survey_key → tất cả khảo sát evaluate trong 1 năm gần nhất. Truyền survey_key → theo cuộc khảo sát cụ thể. Trả về tổng quan, phân bố điểm, xu hướng theo ngày và điểm TB từng section.',
+          description: [
+            'Không truyền survey_key → tất cả khảo sát evaluate trong 1 năm gần nhất.',
+            'Truyền 1 survey_key → theo 1 cuộc khảo sát.',
+            'Truyền nhiều survey_key → gộp nhiều cuộc khảo sát.',
+            'Hỗ trợ 3 cú pháp:',
+            '  ?survey_key=1,2,3  (chuỗi phân tách dấu phẩy)',
+            '  ?survey_key=1&survey_key=2  (lặp lại tham số)',
+            '  ?survey_key=5  (đơn lẻ)',
+          ].join(' '),
           security: [{ bearerAuth: [] }],
           parameters: [
-            { name: 'survey_key', in: 'query', required: false, schema: { type: 'integer' }, description: 'ID của cuộc khảo sát. Bỏ trống để lấy tất cả trong 1 năm.' },
+            {
+              name: 'survey_key',
+              in: 'query',
+              required: false,
+              schema: { type: 'string' },
+              description: 'ID (hoặc danh sách ID cách dấu phẩy) của cuộc khảo sát. Bỏ trống = tất cả trong 1 năm. VD: 1,2,3 hoặc lặp ?survey_key=1&survey_key=2',
+              example: '1,2',
+            },
           ],
           responses: {
             200: {

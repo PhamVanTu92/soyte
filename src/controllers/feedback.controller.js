@@ -78,8 +78,20 @@ const deleteFeedback = async (req, res, next) => {
 
 const getEvaluateDashboard = async (req, res, next) => {
   try {
-    const query = { survey_key: req.query.survey_key || null };
-    const result = await feedbackService.getEvaluateDashboard(query);
+    // Hỗ trợ nhiều định dạng query:
+    //   ?survey_key=1,2,3          → chuỗi phân tách dấu phẩy
+    //   ?survey_key=1&survey_key=2 → Express tự gom thành mảng
+    //   ?survey_key=5              → đơn lẻ (backward compat)
+    const raw = req.query.survey_key;
+    let survey_keys = null;
+
+    if (raw) {
+      const arr = Array.isArray(raw) ? raw : String(raw).split(',');
+      const parsed = arr.map(v => parseInt(v.trim(), 10)).filter(n => !isNaN(n) && n > 0);
+      if (parsed.length > 0) survey_keys = parsed;
+    }
+
+    const result = await feedbackService.getEvaluateDashboard({ survey_keys });
     res.status(200).json({ success: true, message: 'Lấy dữ liệu dashboard giám sát chất lượng thành công', data: result });
   } catch (error) {
     next(error);

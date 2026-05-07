@@ -886,15 +886,18 @@ const deleteFeedback = async (id) => {
  *              └─ sections[]: điểm TB từng mục (cho biểu đồ cột)
  */
 const getEvaluateDashboard = async (query) => {
-  const { survey_key } = query;
+  const { survey_keys } = query;
+  // survey_keys: number[] | null (đã được chuẩn hóa ở controller)
 
   // ── 1. Xác định danh sách survey ──────────────────────────────────
   let surveysInfo = [];
 
-  if (survey_key) {
-    const sv = await db.Survey.findByPk(survey_key);
-    if (!sv) throw new ApiError(404, 'Không tìm thấy cuộc khảo sát');
-    surveysInfo = [sv];
+  if (survey_keys && survey_keys.length > 0) {
+    surveysInfo = await db.Survey.findAll({
+      where: { id: { [Op.in]: survey_keys } },
+      order: [['id', 'ASC']],
+    });
+    if (surveysInfo.length === 0) throw new ApiError(404, 'Không tìm thấy cuộc khảo sát');
   } else {
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
