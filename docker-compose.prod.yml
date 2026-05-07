@@ -45,7 +45,7 @@ services:
       STATS_MAX_FETCH: "${STATS_MAX_FETCH:-2000}"
 
     ports:
-      - "${APP_PORT:-3000}:3000"
+      - "127.0.0.1${APP_PORT:-3000}:3000"
     volumes:
       - uploads_data:/app/uploads
     # Không cần depends_on vì DB là external service
