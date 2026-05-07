@@ -91,8 +91,10 @@ const deleteRole = async (id) => {
   const role = await db.Role.findByPk(id);
   if (!role) throw new ApiError(404, 'Không tìm thấy role');
 
-  // Hủy gán role khỏi tất cả users trước khi xóa
+  // Hủy gán role khỏi legacy role_id
   await db.User.update({ role_id: null }, { where: { role_id: parseInt(id) } });
+  // Xóa khỏi user_roles (cascade hoặc thủ công)
+  await role.setRoleMembers([]);
   await role.destroy();
   return { id: parseInt(id) };
 };
@@ -107,24 +109,45 @@ const setRolePermissions = async (roleId, permission_ids) => {
   return getRoleById(roleId);
 };
 
-// ── Gán role cho user ────────────────────────────────────────────
-const assignRoleToUser = async (userId, roleId) => {
+// ── Gán roles cho user (hỗ trợ 1 hoặc nhiều roles) ──────────────
+const assignRoleToUser = async (userId, roleIds) => {
   const user = await db.User.findByPk(userId);
   if (!user) throw new ApiError(404, 'Không tìm thấy người dùng');
 
-  if (roleId === null || roleId === undefined) {
-    await user.update({ role_id: null });
-    return { user_id: userId, role_id: null };
+  // Normalize: null/undefined/[] → xóa hết; số hoặc mảng → gán
+  let ids = [];
+  if (roleIds !== null && roleIds !== undefined) {
+    ids = (Array.isArray(roleIds) ? roleIds : [roleIds])
+      .map(Number)
+      .filter(n => !isNaN(n) && n > 0);
   }
 
-  const role = await db.Role.findByPk(roleId);
-  if (!role) throw new ApiError(404, 'Không tìm thấy role');
+  if (ids.length === 0) {
+    // Hủy toàn bộ roles
+    await user.setAssignedRoles([]);
+    await user.update({ role_id: null });
+    return { user_id: userId, role_ids: [], roles: [] };
+  }
 
-  await user.update({ role_id: roleId });
-  return { user_id: userId, role_id: roleId, role_name: role.name };
+  const roles = await db.Role.findAll({ where: { id: { [Op.in]: ids } } });
+  if (roles.length !== ids.length) {
+    const foundIds = roles.map(r => r.id);
+    const missing = ids.filter(i => !foundIds.includes(i));
+    throw new ApiError(404, `Không tìm thấy role với id: ${missing.join(', ')}`);
+  }
+
+  await user.setAssignedRoles(roles);
+  // Đồng bộ legacy role_id = role đầu tiên được gán
+  await user.update({ role_id: ids[0] });
+
+  return {
+    user_id: userId,
+    role_ids: ids,
+    roles: roles.map(r => ({ id: r.id, name: r.name })),
+  };
 };
 
-// ── Permissions hiệu lực của user (role + cá nhân) ───────────────
+// ── Permissions hiệu lực của user (tất cả roles + cá nhân) ──────
 const getUserEffectivePermissions = async (userId) => {
   const user = await db.User.findByPk(userId, {
     attributes: ['id', 'full_name', 'email', 'role', 'role_id'],
@@ -137,8 +160,9 @@ const getUserEffectivePermissions = async (userId) => {
       },
       {
         model: db.Role,
-        as: 'assignedRole',
+        as: 'assignedRoles',
         attributes: ['id', 'name', 'description'],
+        through: { attributes: [] },
         include: [{
           model: db.Permission,
           as: 'permissions',
@@ -151,15 +175,16 @@ const getUserEffectivePermissions = async (userId) => {
 
   if (!user) throw new ApiError(404, 'Không tìm thấy người dùng');
 
-  const rolePerms = user.assignedRole?.permissions || [];
+  const assignedRoles = user.assignedRoles || [];
+  const rolePerms = assignedRoles.flatMap(r => r.permissions || []);
   const userPerms = user.permissions || [];
 
-  // Merge: role permissions + user permissions (dedup by id)
+  // Merge: tất cả role permissions + user permissions (dedup by id)
   const allPermsMap = new Map();
   rolePerms.forEach(p => allPermsMap.set(p.id, { ...p.toJSON(), source: 'role' }));
   userPerms.forEach(p => {
     if (!allPermsMap.has(p.id)) allPermsMap.set(p.id, { ...p.toJSON(), source: 'user' });
-    else allPermsMap.get(p.id).source = 'both'; // nằm ở cả 2
+    else allPermsMap.get(p.id).source = 'both';
   });
 
   return {
@@ -167,7 +192,9 @@ const getUserEffectivePermissions = async (userId) => {
     full_name: user.full_name,
     email: user.email,
     system_role: user.role,
-    assigned_role: user.assignedRole ? { id: user.assignedRole.id, name: user.assignedRole.name } : null,
+    assigned_roles: assignedRoles.map(r => ({ id: r.id, name: r.name, description: r.description })),
+    // backward compat
+    assigned_role: assignedRoles[0] ? { id: assignedRoles[0].id, name: assignedRoles[0].name } : null,
     permissions: [...allPermsMap.values()],
     role_permissions: rolePerms,
     individual_permissions: userPerms,

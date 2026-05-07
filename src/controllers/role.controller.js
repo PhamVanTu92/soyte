@@ -46,13 +46,28 @@ const setPermissions = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// PUT /api/roles/assign-user — gán role cho user
+// PUT /api/roles/assign-user — gán 1 hoặc nhiều roles cho user
+// Body: { user_id, role_ids: [1,2,3] }  ← ưu tiên
+//       { user_id, role_id: 1 }          ← tương thích ngược (single)
+//       { user_id, role_ids: [] }         ← hủy toàn bộ roles
 const assignUser = async (req, res, next) => {
   try {
-    const { user_id, role_id } = req.body;
+    const { user_id, role_id, role_ids } = req.body;
     if (!user_id) return res.status(400).json({ success: false, message: 'user_id là bắt buộc' });
-    const data = await service.assignRoleToUser(user_id, role_id ?? null);
-    res.json({ success: true, message: role_id ? 'Gán role thành công' : 'Hủy gán role thành công', data });
+
+    // Ưu tiên role_ids (mảng), fallback về role_id (đơn)
+    let ids;
+    if (role_ids !== undefined) {
+      ids = role_ids; // null, [] hoặc [1,2,...]
+    } else if (role_id !== undefined) {
+      ids = role_id === null ? [] : [role_id];
+    } else {
+      ids = null; // không truyền → không thay đổi
+    }
+
+    const data = await service.assignRoleToUser(user_id, ids);
+    const hasRoles = Array.isArray(data.role_ids) && data.role_ids.length > 0;
+    res.json({ success: true, message: hasRoles ? 'Gán role thành công' : 'Hủy gán role thành công', data });
   } catch (err) { next(err); }
 };
 

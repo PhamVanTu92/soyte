@@ -1267,7 +1267,7 @@ const options = {
       },
       '/api/roles/assign-user': {
         put: {
-          tags: ['Roles'], summary: 'Gán / hủy gán role cho user', security: [{ bearerAuth: [] }],
+          tags: ['Roles'], summary: 'Gán / hủy gán 1 hoặc nhiều roles cho user', security: [{ bearerAuth: [] }],
           requestBody: {
             required: true,
             content: {
@@ -1277,13 +1277,25 @@ const options = {
                   required: ['user_id'],
                   properties: {
                     user_id: { type: 'integer', example: 5 },
-                    role_id: { type: 'integer', example: 2, nullable: true, description: 'null để hủy gán role' },
+                    role_ids: {
+                      type: 'array',
+                      items: { type: 'integer' },
+                      example: [1, 2],
+                      nullable: true,
+                      description: 'Mảng role id. [] hoặc null để hủy toàn bộ. Ưu tiên hơn role_id.',
+                    },
+                    role_id: {
+                      type: 'integer',
+                      example: 2,
+                      nullable: true,
+                      description: '[Legacy] Gán 1 role duy nhất. Dùng role_ids thay thế.',
+                    },
                   },
                 },
               },
             },
           },
-          responses: { 200: { description: 'Thành công' } },
+          responses: { 200: { description: 'Thành công' }, 404: { description: 'User hoặc role không tồn tại' } },
         },
       },
       '/api/roles/user/{userId}/permissions': {

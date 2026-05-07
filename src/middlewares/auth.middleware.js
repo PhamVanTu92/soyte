@@ -39,10 +39,12 @@ const verifyToken = async (req, res, next) => {
             attributes: ['type']
           },
           {
+            // N:N: tất cả roles được gán qua user_roles
             model: db.Role,
-            as: 'assignedRole',
+            as: 'assignedRoles',
             attributes: ['id', 'name'],
             required: false,
+            through: { attributes: [] },
             include: [{
               model: db.Permission,
               as: 'permissions',
@@ -53,11 +55,19 @@ const verifyToken = async (req, res, next) => {
         ]
     });
 
-    // Merge permissions: role permissions + individual user permissions (dedup)
-    if (user && user.assignedRole?.permissions?.length) {
-      const individualNames = new Set((user.permissions || []).map(p => p.name));
-      const rolePerms = user.assignedRole.permissions.filter(p => !individualNames.has(p.name));
-      user.permissions = [...(user.permissions || []), ...rolePerms];
+    // Merge permissions: tất cả role permissions + individual user permissions (dedup by name)
+    if (user && user.assignedRoles?.length) {
+      const nameSet = new Set((user.permissions || []).map(p => p.name));
+      const extraPerms = [];
+      for (const role of user.assignedRoles) {
+        for (const perm of (role.permissions || [])) {
+          if (!nameSet.has(perm.name)) {
+            nameSet.add(perm.name);
+            extraPerms.push(perm);
+          }
+        }
+      }
+      user.permissions = [...(user.permissions || []), ...extraPerms];
     }
 
     if (!user) {
@@ -115,9 +125,10 @@ const optionalAuth = async (req, res, next) => {
         },
         {
           model: db.Role,
-          as: 'assignedRole',
+          as: 'assignedRoles',
           attributes: ['id', 'name'],
           required: false,
+          through: { attributes: [] },
           include: [{
             model: db.Permission,
             as: 'permissions',
@@ -128,10 +139,18 @@ const optionalAuth = async (req, res, next) => {
       ]
     });
 
-    if (user && user.assignedRole?.permissions?.length) {
-      const individualNames = new Set((user.permissions || []).map(p => p.name));
-      const rolePerms = user.assignedRole.permissions.filter(p => !individualNames.has(p.name));
-      user.permissions = [...(user.permissions || []), ...rolePerms];
+    if (user && user.assignedRoles?.length) {
+      const nameSet = new Set((user.permissions || []).map(p => p.name));
+      const extraPerms = [];
+      for (const role of user.assignedRoles) {
+        for (const perm of (role.permissions || [])) {
+          if (!nameSet.has(perm.name)) {
+            nameSet.add(perm.name);
+            extraPerms.push(perm);
+          }
+        }
+      }
+      user.permissions = [...(user.permissions || []), ...extraPerms];
     }
 
     if (user) {

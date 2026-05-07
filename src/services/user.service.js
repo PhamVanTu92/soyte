@@ -15,10 +15,12 @@ const USER_INCLUDE = [
     through: { attributes: [] },
   },
   {
+    // N:N: nhiều roles qua user_roles
     model: db.Role,
-    as: 'assignedRole',
+    as: 'assignedRoles',
     attributes: ['id', 'name', 'description'],
     required: false,
+    through: { attributes: [] },
     include: [{
       model: db.Permission,
       as: 'permissions',
@@ -34,30 +36,43 @@ const USER_ATTRS = [
 ];
 
 /**
- * Format user JSON: gắn role info + effective permissions
- * - Nếu có role → permissions = role.permissions (không thể sửa cá nhân)
+ * Format user JSON: gắn roles info + effective permissions
+ * - Nếu có roles → permissions = union của tất cả role permissions (không thể sửa cá nhân)
  * - Nếu không có role → permissions = user_permissions (có thể sửa)
  */
 const formatUser = (user) => {
   const u = user.toJSON ? user.toJSON() : { ...user };
   const isSuperAdmin = superAdmins.includes(u.email);
 
-  const rolePerms   = u.assignedRole?.permissions || [];
-  const userPerms   = u.permissions || [];
-  const hasRole     = !!u.assignedRole;
+  // Hỗ trợ cả N:N (assignedRoles) lẫn legacy single role (assignedRole)
+  const assignedRoles = u.assignedRoles?.length
+    ? u.assignedRoles
+    : (u.assignedRole ? [u.assignedRole] : []);
 
-  // Effective permissions = role permissions (nếu có role) + cá nhân chỉ dùng khi không có role
-  const effectivePerms = hasRole ? rolePerms : userPerms;
+  const hasRoles = assignedRoles.length > 0;
+
+  // Merge tất cả role permissions (dedup by id)
+  const rolePemrsMap = new Map();
+  assignedRoles.forEach(r =>
+    (r.permissions || []).forEach(p => rolePemrsMap.set(p.id, p))
+  );
+  const rolePerms = [...rolePemrsMap.values()];
+  const userPerms = u.permissions || [];
+
+  // Effective permissions = role perms nếu có role, ngược lại cá nhân
+  const effectivePerms = hasRoles ? rolePerms : userPerms;
   const permNames = effectivePerms.map(p => p.name);
 
   return {
     ...u,
-    // Thông tin role được gán
-    assigned_role: u.assignedRole
-      ? { id: u.assignedRole.id, name: u.assignedRole.name, description: u.assignedRole.description }
+    // Danh sách roles được gán (N:N)
+    assigned_roles: assignedRoles.map(r => ({ id: r.id, name: r.name, description: r.description })),
+    // Backward compat: role đầu tiên
+    assigned_role: assignedRoles[0]
+      ? { id: assignedRoles[0].id, name: assignedRoles[0].name, description: assignedRoles[0].description }
       : null,
     // Nguồn quyền
-    permission_source: hasRole ? 'role' : 'individual',
+    permission_source: hasRoles ? 'role' : 'individual',
     // Quyền hiệu lực (phẳng)
     permission_list: permNames,
     // Quyền hiệu lực (cây)
@@ -65,7 +80,7 @@ const formatUser = (user) => {
     // Chi tiết quyền
     permission_details: effectivePerms.map(p => ({ id: p.id, name: p.name, description: p.description })),
     // Có cho phép sửa permissions cá nhân không
-    can_edit_permissions: !hasRole,
+    can_edit_permissions: !hasRoles,
   };
 };
 
@@ -114,21 +129,30 @@ const getUserById = async (id) => {
 
 // ── Cập nhật user ────────────────────────────────────────────────
 const updateUser = async (id, updateData) => {
-  const { password, permissions, role_id, ...dataToUpdate } = updateData;
+  const { password, permissions, role_id, role_ids, ...dataToUpdate } = updateData;
 
   const user = await db.User.findByPk(id, {
-    include: [{ model: db.Role, as: 'assignedRole', attributes: ['id'] }],
+    include: [{ model: db.Role, as: 'assignedRoles', through: { attributes: [] }, attributes: ['id'] }],
   });
   if (!user) throw new ApiError(404, 'Người dùng không tồn tại');
 
-  // Xử lý role_id (gán / hủy gán role)
-  if (role_id !== undefined) {
-    if (role_id === null || role_id === '') {
+  // Xử lý role_ids (N:N) hoặc role_id (legacy single)
+  let newRoleIds = undefined;
+  if (role_ids !== undefined) {
+    newRoleIds = Array.isArray(role_ids) ? role_ids.map(Number).filter(Boolean) : [];
+  } else if (role_id !== undefined) {
+    newRoleIds = (role_id === null || role_id === '') ? [] : [Number(role_id)];
+  }
+
+  if (newRoleIds !== undefined) {
+    if (newRoleIds.length === 0) {
+      await user.setAssignedRoles([]);
       dataToUpdate.role_id = null;
     } else {
-      const role = await db.Role.findByPk(role_id);
-      if (!role) throw new ApiError(404, 'Role không tồn tại');
-      dataToUpdate.role_id = role_id;
+      const roles = await db.Role.findAll({ where: { id: { [Op.in]: newRoleIds } } });
+      if (roles.length !== newRoleIds.length) throw new ApiError(404, 'Một hoặc nhiều role không tồn tại');
+      await user.setAssignedRoles(roles);
+      dataToUpdate.role_id = newRoleIds[0]; // đồng bộ legacy
     }
   }
 
@@ -136,9 +160,8 @@ const updateUser = async (id, updateData) => {
 
   // Xử lý permissions cá nhân
   if (permissions !== undefined) {
-    // Reload để có role_id mới nhất
-    const currentRoleId = dataToUpdate.role_id !== undefined ? dataToUpdate.role_id : user.role_id;
-    if (currentRoleId) {
+    const currentRoles = newRoleIds !== undefined ? newRoleIds : (user.assignedRoles || []).map(r => r.id);
+    if (currentRoles.length > 0) {
       throw new ApiError(400, 'Không thể chỉnh sửa permissions cá nhân khi user đang được gán role. Hãy thay đổi permissions của role hoặc hủy gán role trước.');
     }
 
@@ -172,13 +195,14 @@ const deleteUser = async (id) => {
 // ── Gán permissions cá nhân (chỉ khi không có role) ─────────────
 const setUserPermissions = async (userId, permissionsInput) => {
   const user = await db.User.findByPk(userId, {
-    include: [{ model: db.Role, as: 'assignedRole', attributes: ['id', 'name'] }],
+    include: [{ model: db.Role, as: 'assignedRoles', through: { attributes: [] }, attributes: ['id', 'name'] }],
   });
   if (!user) throw new ApiError(404, 'Người dùng không tồn tại');
 
-  if (user.assignedRole) {
+  if (user.assignedRoles?.length > 0) {
+    const roleNames = user.assignedRoles.map(r => r.name).join(', ');
     throw new ApiError(400,
-      `Người dùng đang được gán role "${user.assignedRole.name}". ` +
+      `Người dùng đang được gán role: "${roleNames}". ` +
       `Permissions được quản lý qua role — hãy chỉnh sửa permissions của role hoặc hủy gán role trước.`
     );
   }
@@ -200,20 +224,29 @@ const setUserPermissions = async (userId, permissionsInput) => {
   return true;
 };
 
-// ── Gán role cho user ────────────────────────────────────────────
-const assignRoleToUser = async (userId, roleId) => {
+// ── Gán roles cho user (hỗ trợ 1 hoặc nhiều) ───────────────────
+const assignRoleToUser = async (userId, roleIds) => {
   const user = await db.User.findByPk(userId);
   if (!user) throw new ApiError(404, 'Người dùng không tồn tại');
 
-  if (roleId === null || roleId === undefined || roleId === '') {
-    await user.update({ role_id: null });
-    return getUserById(userId);
+  // Normalize input
+  let ids = [];
+  if (roleIds !== null && roleIds !== undefined) {
+    ids = (Array.isArray(roleIds) ? roleIds : [roleIds])
+      .map(Number)
+      .filter(n => !isNaN(n) && n > 0);
   }
 
-  const role = await db.Role.findByPk(roleId);
-  if (!role) throw new ApiError(404, 'Role không tồn tại');
+  if (ids.length === 0) {
+    await user.setAssignedRoles([]);
+    await user.update({ role_id: null });
+  } else {
+    const roles = await db.Role.findAll({ where: { id: { [Op.in]: ids } } });
+    if (roles.length !== ids.length) throw new ApiError(404, 'Một hoặc nhiều role không tồn tại');
+    await user.setAssignedRoles(roles);
+    await user.update({ role_id: ids[0] });
+  }
 
-  await user.update({ role_id: roleId });
   return getUserById(userId);
 };
 
