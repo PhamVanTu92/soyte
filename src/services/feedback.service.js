@@ -886,8 +886,9 @@ const deleteFeedback = async (id) => {
  *              └─ sections[]: điểm TB từng mục (cho biểu đồ cột)
  */
 const getEvaluateDashboard = async (query) => {
-  const { survey_keys } = query;
-  // survey_keys: number[] | null (đã được chuẩn hóa ở controller)
+  const { survey_keys, unit_filter } = query;
+  // survey_keys:  number[] | null  — đã chuẩn hóa ở controller
+  // unit_filter:  string | null    — ID cơ sở (social_facilities.id); null = xem tất cả
 
   // ── 1. Xác định danh sách survey ──────────────────────────────────
   let surveysInfo = [];
@@ -917,11 +918,22 @@ const getEvaluateDashboard = async (query) => {
   if (surveyKeys.length === 0) return empty;
 
   // ── 2. Fetch feedbacks (raw) ───────────────────────────────────────
-  const rawFeedbacks = await db.Feedback.findAll({
+  // Thêm 'info' để có thể lọc theo cơ sở khi unit_filter được set
+  const allFeedbacks = await db.Feedback.findAll({
     where: { type: 'evaluate', survey_key: { [Op.in]: surveyKeys } },
-    attributes: ['id', 'form_id', 'user_id', 'created_at', 'survey_key'],
+    attributes: ['id', 'form_id', 'user_id', 'created_at', 'survey_key', 'info'],
     raw: true,
   });
+
+  // ── Filter theo cơ sở nếu user không phải admin ──────────────────
+  let rawFeedbacks = allFeedbacks;
+  if (unit_filter) {
+    rawFeedbacks = allFeedbacks.filter(fb => {
+      const unitInfo = getUnitFromInfo(fb.info);
+      // unitKey trong info phải khớp với unit_filter (social_facilities.id)
+      return unitInfo && String(unitInfo.unitKey) === unit_filter;
+    });
+  }
 
   if (rawFeedbacks.length === 0) return { ...empty, meta: { surveys: surveysInfo.map(s => ({ id: s.id, name: s.name })), totalFeedbacks: 0 } };
 
