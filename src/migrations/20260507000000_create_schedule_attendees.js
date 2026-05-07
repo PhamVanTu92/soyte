@@ -22,6 +22,8 @@ module.exports = {
         )
       `, { transaction });
     } else {
+      // MSSQL: tên constraint phải UNIQUE trong toàn DB (không phải per-table như PG).
+      // schedule_attachments đã dùng FK_sa_schedule → dùng tên khác tránh conflict.
       await sequelize.query(`
         IF NOT EXISTS (
           SELECT 1 FROM INFORMATION_SCHEMA.TABLES
@@ -32,9 +34,9 @@ module.exports = {
             [schedule_id] BIGINT  NOT NULL,
             [user_id]     INT     NOT NULL,
             CONSTRAINT PK_schedule_attendees PRIMARY KEY ([schedule_id], [user_id]),
-            CONSTRAINT FK_sa_schedule FOREIGN KEY ([schedule_id])
+            CONSTRAINT FK_satt_schedule FOREIGN KEY ([schedule_id])
               REFERENCES [work_schedules]([id]) ON DELETE CASCADE,
-            CONSTRAINT FK_sa_user FOREIGN KEY ([user_id])
+            CONSTRAINT FK_satt_user FOREIGN KEY ([user_id])
               REFERENCES [users]([id]) ON DELETE CASCADE
           )
         END

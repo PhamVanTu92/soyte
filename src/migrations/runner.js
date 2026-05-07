@@ -96,9 +96,17 @@ async function runUp() {
       await t.commit();
       console.log('✅ OK');
     } catch (err) {
-      await t.rollback();
+      // Rollback — bắt lỗi phụ "no corresponding BEGIN TRANSACTION" của MSSQL:
+      // XACT_ABORT đã tự rollback transaction khi statement lỗi → Sequelize rollback
+      // thủ công sẽ fail với lỗi này. Đây là safe to ignore; transaction đã sạch.
+      try { await t.rollback(); } catch (rbErr) {
+        if (!/no corresponding BEGIN/i.test(rbErr.message)) {
+          console.warn(`\n     ⚠️  Rollback warning: ${rbErr.message}`);
+        }
+      }
       console.log('❌ FAILED');
       console.error(`\n     Error: ${err.message}`);
+      if (err.parent) console.error(`     Detail: ${err.parent.message}`);
       process.exit(1);
     }
   }
@@ -137,9 +145,14 @@ async function runDown(all = false) {
       await t.commit();
       console.log('✅ Rolled back');
     } catch (err) {
-      await t.rollback();
+      try { await t.rollback(); } catch (rbErr) {
+        if (!/no corresponding BEGIN/i.test(rbErr.message)) {
+          console.warn(`\n     ⚠️  Rollback warning: ${rbErr.message}`);
+        }
+      }
       console.log('❌ FAILED');
       console.error(`\n     Error: ${err.message}`);
+      if (err.parent) console.error(`     Detail: ${err.parent.message}`);
       process.exit(1);
     }
   }
