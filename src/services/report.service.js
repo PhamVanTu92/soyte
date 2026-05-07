@@ -638,8 +638,308 @@ const getReportKSHL = async (query) => {
     };
 };
 
+// ── Báo cáo Giám sát y tế (GSAT) ────────────────────────────────
+// Tách riêng khỏi getReportKSHL. Hỗ trợ user-unit-aware: nếu người dùng
+// được gán vào một cơ sở y tế cụ thể, mục 1/2/3 chỉ hiển thị dữ liệu
+// của cơ sở đó. Phụ lục luôn hiển thị đầy đủ.
+const getReportGSAT = async (query, userContext = {}) => {
+    let { startDate, endDate, survey_key } = query;
+    if (!survey_key) survey_key = '2'; // default: health monitoring survey
+
+    const { userUnitId } = userContext;
+
+    // ── 1. Fetch raw feedbacks ──────────────────────────────────────
+    const where = { type: 'evaluate' };
+    where.survey_key = { [Op.in]: Array.isArray(survey_key) ? survey_key : String(survey_key).split(',') };
+    const range = getDateRange(startDate, endDate);
+    if (range) {
+        if (range[0] && range[1]) where.created_at = { [Op.between]: range };
+        else if (range[0]) where.created_at = { [Op.gte]: range[0] };
+        else if (range[1]) where.created_at = { [Op.lte]: range[1] };
+    }
+
+    const rawFeedbacks = await db.Feedback.findAll({
+        where,
+        attributes: ['id', 'info', 'form_id', 'user_id', 'created_at', 'type', 'survey_key'],
+        raw: true,
+    });
+
+    // Fetch feedback options in parallel batches
+    const feedbackIds = rawFeedbacks.map(f => f.id);
+    const optionsByFb = {};
+    if (feedbackIds.length > 0) {
+        const BATCH_SIZE = 500, CONCURRENCY = 8;
+        const allSectionRows = [];
+        for (let i = 0; i < feedbackIds.length; i += BATCH_SIZE * CONCURRENCY) {
+            const batchPromises = [];
+            for (let j = i; j < Math.min(i + BATCH_SIZE * CONCURRENCY, feedbackIds.length); j += BATCH_SIZE) {
+                const batch = feedbackIds.slice(j, j + BATCH_SIZE);
+                batchPromises.push(
+                    sequelize.query(
+                        `SELECT fs."feedback_id", fo."data"
+                         FROM "feedback_sections" fs
+                         LEFT JOIN "feedback_options" fo ON fo."feedback_section_id" = fs."id"
+                         WHERE fs."feedback_id" IN (:ids)`,
+                        { replacements: { ids: batch }, type: QueryTypes.SELECT }
+                    )
+                );
+            }
+            (await Promise.all(batchPromises)).forEach(r => allSectionRows.push(...r));
+        }
+        allSectionRows.forEach(row => {
+            if (!row.feedback_id) return;
+            if (!optionsByFb[row.feedback_id]) optionsByFb[row.feedback_id] = [];
+            let d = row.data;
+            if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) {} }
+            if (d) optionsByFb[row.feedback_id].push(d);
+        });
+    }
+
+    rawFeedbacks.forEach(fb => {
+        const parsed = parseFeedbackRow(fb);
+        fb._parsed = parsed;
+        fb.info = parsed._info;
+        fb.optionsData = optionsByFb[fb.id] || [];
+    });
+
+    // ── 2. Load facilities + form-type map ─────────────────────────
+    const allUnits = await db.SocialFacility.findAll();
+    const forms = await db.Form.findAll({ where: { type: 'evaluate' }, raw: true });
+    const formTypeMap = {};
+    forms.forEach(f => {
+        const sId = String(f.id);
+        if (sId === '19') { formTypeMap[sId] = 'noi_tru'; return; }
+        if (sId === '20') { formTypeMap[sId] = 'ngoai_tru'; return; }
+        if (sId === '21') { formTypeMap[sId] = 'tiem_chung'; return; }
+        const nm = (f.name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '');
+        if (nm.includes('noitru')) formTypeMap[sId] = 'noi_tru';
+        else if (nm.includes('tiem') || nm.includes('vaccine')) formTypeMap[sId] = 'tiem_chung';
+        else if (nm.includes('ngoaitru')) formTypeMap[sId] = 'ngoai_tru';
+    });
+
+    // ── 3. Group feedbacks → unitGroups ────────────────────────────
+    const unitGroups = {};
+    const unmapped = { noi_tru: { self: [], qr: [] }, ngoai_tru: { self: [], qr: [] }, tiem_chung: { self: [], qr: [] }, unknown: { self: [], qr: [] } };
+
+    rawFeedbacks.forEach(fb => {
+        const p = fb._parsed;
+        const sType = p.surveyType !== 'unknown' ? p.surveyType : (formTypeMap[p.formId] || 'unknown');
+        const target = p.isQR ? 'qr' : 'self';
+        const unitId = p.facilityKey || (fb.facility_id ? String(fb.facility_id).trim() : null);
+        const matched = unitId ? allUnits.find(u => String(u.id).trim() === unitId) : null;
+        if (matched) {
+            if (!unitGroups[matched.id]) unitGroups[matched.id] = {};
+            if (!unitGroups[matched.id][sType]) unitGroups[matched.id][sType] = { self: [], qr: [] };
+            unitGroups[matched.id][sType][target].push(fb);
+        } else {
+            if (!unmapped[sType]) unmapped[sType] = { self: [], qr: [] };
+            unmapped[sType][target].push(fb);
+        }
+    });
+
+    // ── 4. Helpers ─────────────────────────────────────────────────
+    const calcRate = (arr) => {
+        if (!arr || !arr.length) return 0;
+        let totalW = 0, count = 0;
+        arr.forEach(fb => {
+            let fbScore = 0, fbMax = 0;
+            (fb.optionsData || []).forEach(od => {
+                if (!od) return;
+                const v = od.ratingVote?.value ?? od.rating?.value ?? od.answerValue;
+                if (v !== undefined && v !== null && !isNaN(Number(v)) && Number(v) > 0) { fbScore += Number(v); fbMax += 5; }
+            });
+            if (fbMax === 0) {
+                const r = fb.rating ?? fb.score ?? fb.info?.rating ?? 0;
+                if (r > 0) { fbScore = Number(r); fbMax = 5; }
+            }
+            if (fbMax > 0) { totalW += (fbScore / fbMax); count++; }
+        });
+        return count === 0 ? 0 : (totalW / count) * 100;
+    };
+
+    const fmtNum = (n) => Number(n).toLocaleString('vi-VN');
+
+    const summaryRow = (units, sType, label) => {
+        let selfU = 0, selfP = 0, selfR = 0, qrU = 0, qrP = 0, qrR = 0;
+        units.forEach(u => {
+            const g = unitGroups[u.id]?.[sType];
+            if (g?.self?.length) { selfU++; selfP += g.self.length; selfR += calcRate(g.self); }
+            if (g?.qr?.length) { qrU++; qrP += g.qr.length; qrR += calcRate(g.qr); }
+        });
+        return {
+            type: label,
+            selfUnitsReported: selfU,
+            totalUnits: units.length,
+            selfTotalPhieu: selfP,
+            selfRate: selfU > 0 ? (selfR / selfU).toFixed(2) : '0',
+            qrUnitsReported: qrU,
+            qrTotalPhieu: qrP,
+            qrRate: qrU > 0 ? (qrR / qrU).toFixed(2) : '0',
+        };
+    };
+
+    // ── 5. Determine unit scope for sections ───────────────────────
+    const pubHosp = allUnits.filter(u => u.type === 'BV' && u.category !== 'Cơ sở y tế tư nhân');
+    const privHosp = allUnits.filter(u => u.type === 'BV' && u.category === 'Cơ sở y tế tư nhân');
+    const tytList = allUnits.filter(u => u.type === 'TYT');
+
+    let userUnit = null;
+    let isSingleUnit = false;
+    let scope = { pub: pubHosp, priv: privHosp, tyt: tytList };
+
+    if (userUnitId) {
+        userUnit = allUnits.find(u => String(u.id) === String(userUnitId)) || null;
+        if (userUnit) {
+            isSingleUnit = true;
+            scope = {
+                pub:  userUnit.type === 'BV' && userUnit.category !== 'Cơ sở y tế tư nhân' ? [userUnit] : [],
+                priv: userUnit.type === 'BV' && userUnit.category === 'Cơ sở y tế tư nhân'  ? [userUnit] : [],
+                tyt:  userUnit.type === 'TYT' ? [userUnit] : [],
+            };
+        }
+    }
+
+    // Build a summary section (rows by group type + optional unmapped + total)
+    const buildSection = (sType, includeUnmapped, includePriv = true, includeTyt = true) => {
+        const rows = [];
+        let stt = 1;
+
+        if (scope.pub.length > 0 || !isSingleUnit)
+            rows.push({ id: String(stt++), ...summaryRow(scope.pub, sType, 'BV công lập') });
+        if (includePriv && (scope.priv.length > 0 || !isSingleUnit))
+            rows.push({ id: String(stt++), ...summaryRow(scope.priv, sType, 'BV ngoài công lập') });
+        if (includeTyt && sType !== 'noi_tru' && (scope.tyt.length > 0 || !isSingleUnit))
+            rows.push({ id: String(stt++), ...summaryRow(scope.tyt, sType, 'Trạm Y tế') });
+
+        if (includeUnmapped && !isSingleUnit) {
+            const uSelf = [...(unmapped[sType]?.self || []), ...(unmapped.unknown.self)];
+            const uQr   = [...(unmapped[sType]?.qr   || []), ...(unmapped.unknown.qr)];
+            rows.push({
+                id: String(stt++), type: 'Không ghi địa chỉ',
+                selfUnitsReported: 0, totalUnits: 0,
+                selfTotalPhieu: uSelf.length, selfRate: calcRate(uSelf).toFixed(2),
+                qrUnitsReported: 0, qrTotalPhieu: uQr.length, qrRate: calcRate(uQr).toFixed(2),
+            });
+        }
+
+        // Total row
+        const totUnits = [...scope.pub, ...(includePriv ? scope.priv : []), ...((includeTyt && sType !== 'noi_tru') ? scope.tyt : [])];
+        const tot = { id: '', type: 'Tổng cộng', isTotal: true, ...summaryRow(totUnits, sType, 'Tổng cộng') };
+        if (includeUnmapped && !isSingleUnit) {
+            const uSelf = [...(unmapped[sType]?.self || []), ...unmapped.unknown.self];
+            const uQr   = [...(unmapped[sType]?.qr   || []), ...unmapped.unknown.qr];
+            tot.selfTotalPhieu += uSelf.length;
+            tot.qrTotalPhieu   += uQr.length;
+        }
+        rows.push(tot);
+        return rows;
+    };
+
+    // Section 3: Tiêm chủng — groups are BV block + TYT block (not pub/priv split)
+    const buildTiemChungSection = () => {
+        if (isSingleUnit && userUnit) {
+            return [{ id: '1', ...summaryRow([userUnit], 'tiem_chung', userUnit.name) }];
+        }
+        const allBV = allUnits.filter(u => u.type === 'BV');
+        const rows = [];
+        rows.push({ id: '1', ...summaryRow(allBV,    'tiem_chung', 'Khối Bệnh viện') });
+        rows.push({ id: '2', ...summaryRow(tytList,  'tiem_chung', 'Khối TYT') });
+        const uSelf = [...(unmapped.tiem_chung?.self || []), ...unmapped.unknown.self];
+        const uQr   = [...(unmapped.tiem_chung?.qr   || []), ...unmapped.unknown.qr];
+        rows.push({
+            id: '3', type: 'Không ghi địa chỉ',
+            selfUnitsReported: 0, totalUnits: 0,
+            selfTotalPhieu: uSelf.length, selfRate: calcRate(uSelf).toFixed(2),
+            qrUnitsReported: 0, qrTotalPhieu: uQr.length, qrRate: calcRate(uQr).toFixed(2),
+        });
+        const tot = { id: '', type: 'Tổng cộng', isTotal: true, ...summaryRow([...allBV, ...tytList], 'tiem_chung', 'Tổng cộng') };
+        tot.selfTotalPhieu += uSelf.length;
+        tot.qrTotalPhieu   += uQr.length;
+        rows.push(tot);
+        return rows;
+    };
+
+    // ── 6. Appendices (always full data) ───────────────────────────
+    const buildAppendix = (units, type1, type2, groupCommune = false) => {
+        const rawRows = units.map(u => {
+            const g = unitGroups[u.id];
+            const s1 = g?.[type1], s2 = g?.[type2];
+            let name = u.name;
+            if (groupCommune) {
+                const mAddr = u.address?.match(/(?:xã|phường|thị trấn|x\.|p\.)\s*([^-,.]+)/i);
+                const mName = u.name.match(/(?:xã|phường|thị trấn|x\.|p\.)\s*([^-,.]+)/i);
+                if (mAddr?.[1]) name = mAddr[1].trim();
+                else if (mName?.[1]) name = mName[1].trim();
+                else name = u.name.replace(/Trạm y tế /i, '').trim();
+                name = name.normalize('NFC');
+            }
+            return {
+                name,
+                c1: s1 ? calcRate(s1.self) : 0, c2: s2 ? calcRate(s2.self) : 0,
+                c3: s1?.self.length || 0,        c4: s2?.self.length || 0,
+                c5: s1 ? calcRate(s1.qr) : 0,   c6: s2 ? calcRate(s2.qr) : 0,
+                c7: s1?.qr.length || 0,          c8: s2?.qr.length || 0,
+            };
+        });
+
+        if (groupCommune) {
+            const grouped = {};
+            rawRows.forEach(r => {
+                if (!grouped[r.name]) grouped[r.name] = { ...r, sr1: 0, sr2: 0, sr5: 0, sr6: 0, a1: 0, a2: 0, a5: 0, a6: 0 };
+                const g = grouped[r.name];
+                g.c3 += r.c3; g.c4 += r.c4; g.c7 += r.c7; g.c8 += r.c8;
+                if (r.c1 > 0) { g.sr1 += r.c1; g.a1++; }
+                if (r.c2 > 0) { g.sr2 += r.c2; g.a2++; }
+                if (r.c5 > 0) { g.sr5 += r.c5; g.a5++; }
+                if (r.c6 > 0) { g.sr6 += r.c6; g.a6++; }
+            });
+            return Object.keys(grouped).sort().map((nm, i) => {
+                const g = grouped[nm];
+                return {
+                    id: String(i + 1), type: nm,
+                    col1: g.a1 > 0 ? (g.sr1 / g.a1).toFixed(2) + '%' : '',
+                    col2: g.a2 > 0 ? (g.sr2 / g.a2).toFixed(2) + '%' : '',
+                    col3: g.c3 > 0 ? fmtNum(g.c3) : '',
+                    col4: g.c4 > 0 ? fmtNum(g.c4) : '',
+                    col5: g.a5 > 0 ? (g.sr5 / g.a5).toFixed(2) + '%' : '',
+                    col6: g.a6 > 0 ? (g.sr6 / g.a6).toFixed(2) + '%' : '',
+                    col7: g.c7 > 0 ? fmtNum(g.c7) : '',
+                    col8: g.c8 > 0 ? fmtNum(g.c8) : '',
+                };
+            });
+        }
+
+        return rawRows.map((r, i) => ({
+            id: String(i + 1), type: r.name,
+            col1: r.c1 > 0 ? r.c1.toFixed(2) + '%' : '',
+            col2: r.c2 > 0 ? r.c2.toFixed(2) + '%' : '',
+            col3: r.c3 > 0 ? fmtNum(r.c3) : '',
+            col4: r.c4 > 0 ? fmtNum(r.c4) : '',
+            col5: r.c5 > 0 ? r.c5.toFixed(2) + '%' : '',
+            col6: r.c6 > 0 ? r.c6.toFixed(2) + '%' : '',
+            col7: r.c7 > 0 ? fmtNum(r.c7) : '',
+            col8: r.c8 > 0 ? fmtNum(r.c8) : '',
+        }));
+    };
+
+    return {
+        dataNgoaiTru:  buildSection('ngoai_tru', true, true, true),
+        dataNoiTru:    buildSection('noi_tru',   true, true, false),
+        dataTiemChung: buildTiemChungSection(),
+        dataPhuLuc1:   buildAppendix(pubHosp,  'noi_tru',    'ngoai_tru'),
+        dataPhuLuc2:   buildAppendix(privHosp, 'noi_tru',    'ngoai_tru'),
+        dataPhuLuc3:   buildAppendix(tytList,  'tiem_chung', 'ngoai_tru', true),
+        meta: {
+            isSingleUnit,
+            userUnit: userUnit ? { id: userUnit.id, name: userUnit.name, type: userUnit.type, category: userUnit.category } : null,
+            totalFeedbacks: rawFeedbacks.length,
+        },
+    };
+};
+
 module.exports = {
     getReportDCBC,
     getReportTCT01,
-    getReportKSHL
+    getReportKSHL,
+    getReportGSAT,
 };

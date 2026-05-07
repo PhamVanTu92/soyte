@@ -1150,6 +1150,76 @@ const options = {
         },
       },
 
+      '/api/reports/gsat': {
+        get: {
+          tags: ['Reports'],
+          summary: 'Báo cáo Giám sát y tế (backend-calculated)',
+          description: 'Trả về dữ liệu báo cáo đã được tính toán phía backend gồm 3 mục chính (ngoại trú, nội trú, tiêm chủng) và 3 phụ lục. Nếu người dùng được gán vào cơ sở y tế cụ thể (trường `unit`), mục 1/2/3 chỉ hiển thị dữ liệu của cơ sở đó.',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'survey_key', in: 'query', schema: { type: 'string', default: '2' }, description: 'Survey key (mặc định: 2)' },
+            { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Từ ngày (YYYY-MM-DD)' },
+            { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Đến ngày (YYYY-MM-DD)' },
+          ],
+          responses: {
+            200: {
+              description: 'Thành công',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          dataNgoaiTru:  { type: 'array', description: 'Mục 1: Người bệnh ngoại trú' },
+                          dataNoiTru:    { type: 'array', description: 'Mục 2: Người bệnh nội trú' },
+                          dataTiemChung: { type: 'array', description: 'Mục 3: Dịch vụ tiêm chủng' },
+                          dataPhuLuc1:   { type: 'array', description: 'Phụ lục 1: BV công lập' },
+                          dataPhuLuc2:   { type: 'array', description: 'Phụ lục 2: BV ngoài công lập' },
+                          dataPhuLuc3:   { type: 'array', description: 'Phụ lục 3: Trạm Y tế theo xã/phường' },
+                          meta: {
+                            type: 'object',
+                            properties: {
+                              isSingleUnit: { type: 'boolean' },
+                              userUnit: { type: 'object', nullable: true },
+                              totalFeedbacks: { type: 'integer' },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            401: { description: 'Chưa xác thực' },
+            403: { description: 'Không có quyền truy cập' },
+          },
+        },
+        post: {
+          tags: ['Reports'],
+          summary: 'Báo cáo Giám sát y tế (POST body)',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    survey_key: { type: 'string', default: '2' },
+                    startDate: { type: 'string', format: 'date' },
+                    endDate: { type: 'string', format: 'date' },
+                  },
+                },
+              },
+            },
+          },
+          responses: { 200: { description: 'Thành công' } },
+        },
+      },
+
       // ══════════════════════════════════════════════════════════
       //  ROLES
       // ══════════════════════════════════════════════════════════
