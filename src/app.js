@@ -75,7 +75,8 @@ app.use(cors({
 }));
 
 // Xử lý preflight OPTIONS cho tất cả routes
-app.options('*', cors());
+// Express 5 không chấp nhận '*' — dùng regex thay thế
+app.options(/.*/, cors());
 
 // Rate limiting cho auth endpoints
 const authLimiter = rateLimit({
