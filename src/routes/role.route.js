@@ -6,7 +6,9 @@ const ctrl = require('../controllers/role.controller');
 const { verifyToken: auth } = require('../middlewares/auth.middleware');
 const { checkPermission } = require('../middlewares/checkPermission.middleware');
 
-const adminOnly = [auth, checkPermission(['admin'])];
+// 'users' → admin cũ (có permission users trong token)
+// 'admin' → sau khi migrate, role Admin có permission này
+const adminOnly = [auth, checkPermission(['users', 'admin'])];
 
 // GET    /api/roles                          — danh sách roles
 router.get('/', auth, ctrl.list);
