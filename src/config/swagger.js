@@ -50,6 +50,44 @@ const options = {
           },
         },
 
+        // ─── Trading Facility ─────────────────────────────────────
+        TradingFacility: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer', example: 1 },
+            certificate_number: { type: 'string', example: '01-2759/ĐKKDD-HNO' },
+            name: { type: 'string', example: 'NHÀ THUỐC ABC' },
+            person_in_charge: { type: 'string', example: 'Nguyễn Văn A' },
+            practice_certificate: { type: 'string', example: '00259/CCHND-SYT-HNO' },
+            facility_type: { type: 'string', example: 'Nhà thuốc' },
+            trading_type: { type: 'string', enum: ['wholesale', 'retail'] },
+            address: { type: 'string', example: 'Số 1 Nguyễn Huy Tưởng, Hà Nội' },
+            issue_date: { type: 'string', example: '21/07 2025' },
+            gps_number: { type: 'string', example: '2759' },
+            gps_issue_date: { type: 'string', example: '21/07 2025' },
+            is_active: { type: 'boolean', example: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        TradingFacilityInput: {
+          type: 'object',
+          required: ['name', 'trading_type'],
+          properties: {
+            certificate_number: { type: 'string' },
+            name: { type: 'string' },
+            person_in_charge: { type: 'string' },
+            practice_certificate: { type: 'string' },
+            facility_type: { type: 'string' },
+            trading_type: { type: 'string', enum: ['wholesale', 'retail'] },
+            address: { type: 'string' },
+            issue_date: { type: 'string' },
+            gps_number: { type: 'string' },
+            gps_issue_date: { type: 'string' },
+            is_active: { type: 'boolean', default: true },
+          },
+        },
+
         // ─── Auth ─────────────────────────────────────────────────
         RegisterBody: {
           type: 'object',
@@ -273,6 +311,7 @@ const options = {
       { name: 'Upload', description: 'Tải file lên' },
       { name: 'Email', description: 'Cấu hình & xác nhận email' },
       { name: 'Reports', description: 'Báo cáo' },
+      { name: 'Trading Facilities', description: 'Cơ sở bán buôn / bán lẻ thuốc' },
       { name: 'Crawler', description: 'Cào dữ liệu lịch công tác' },
     ],
     paths: {
@@ -1063,6 +1102,138 @@ const options = {
             { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
           ],
           responses: { 200: { description: 'Thành công' } },
+        },
+      },
+
+      // ══════════════════════════════════════════════════════════
+      //  TRADING FACILITIES — cơ sở bán buôn, bán lẻ
+      // ══════════════════════════════════════════════════════════
+      '/api/trading-facilities': {
+        get: {
+          tags: ['Trading Facilities'],
+          summary: 'Danh sách cơ sở bán buôn / bán lẻ',
+          parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Tìm theo tên, giấy CN, địa chỉ, người phụ trách' },
+            { name: 'trading_type', in: 'query', schema: { type: 'string', enum: ['wholesale', 'retail'] }, description: 'wholesale = bán buôn | retail = bán lẻ' },
+            { name: 'facility_type', in: 'query', schema: { type: 'string' }, description: 'Loại hình (Nhà thuốc, Quầy thuốc, ...)' },
+            { name: 'is_active', in: 'query', schema: { type: 'boolean' } },
+            { name: 'sort_by', in: 'query', schema: { type: 'string', default: 'id' } },
+            { name: 'sort_order', in: 'query', schema: { type: 'string', enum: ['ASC', 'DESC'], default: 'ASC' } },
+          ],
+          responses: {
+            200: {
+              description: 'Thành công',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean' },
+                      data: { type: 'array', items: { $ref: '#/components/schemas/TradingFacility' } },
+                      pagination: { $ref: '#/components/schemas/PaginationMeta' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        post: {
+          tags: ['Trading Facilities'],
+          summary: 'Tạo mới cơ sở',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/TradingFacilityInput' },
+              },
+            },
+          },
+          responses: {
+            201: { description: 'Tạo thành công' },
+            400: { description: 'Dữ liệu không hợp lệ' },
+            401: { description: 'Chưa xác thực' },
+          },
+        },
+      },
+      '/api/trading-facilities/stats': {
+        get: {
+          tags: ['Trading Facilities'],
+          summary: 'Thống kê cơ sở bán buôn / bán lẻ',
+          responses: {
+            200: {
+              description: 'Thành công',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          total: { type: 'integer' },
+                          wholesale: { type: 'integer' },
+                          retail: { type: 'integer' },
+                          active: { type: 'integer' },
+                          inactive: { type: 'integer' },
+                          byType: { type: 'array', items: { type: 'object' } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/trading-facilities/{id}': {
+        get: {
+          tags: ['Trading Facilities'],
+          summary: 'Chi tiết cơ sở',
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer' } },
+          ],
+          responses: {
+            200: { description: 'Thành công' },
+            404: { description: 'Không tìm thấy' },
+          },
+        },
+        put: {
+          tags: ['Trading Facilities'],
+          summary: 'Cập nhật cơ sở',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer' } },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/TradingFacilityInput' },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Cập nhật thành công' },
+            404: { description: 'Không tìm thấy' },
+          },
+        },
+        delete: {
+          tags: ['Trading Facilities'],
+          summary: 'Xóa cơ sở',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer' } },
+          ],
+          responses: {
+            200: { description: 'Xóa thành công' },
+            404: { description: 'Không tìm thấy' },
+          },
         },
       },
 
