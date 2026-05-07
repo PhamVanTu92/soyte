@@ -9,8 +9,12 @@ const options = {
       description: 'API quản lý cơ sở y tế xã hội — Sức khoẻ Thủ Đô',
     },
     servers: [
-      { url: process.env.SWAGGER_SERVER_URL || `http://localhost:${process.env.PORT || 3000}`, description: 'Current Server' },
+      ...(process.env.SWAGGER_SERVER_URL
+        ? [{ url: process.env.SWAGGER_SERVER_URL, description: 'Current Server' }]
+        : []),
+      { url: 'http://160.30.252.42:3000', description: 'Server nội bộ' },
       { url: 'https://suckhoethudo.vn', description: 'Production' },
+      { url: `http://localhost:${process.env.PORT || 3000}`, description: 'Local Dev' },
     ],
     components: {
       securitySchemes: {
