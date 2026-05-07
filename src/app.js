@@ -26,6 +26,9 @@ const errorHandler = require('./middlewares/error.middleware');
 
 const app = express();
 
+// Tin tưởng reverse proxy (Nginx) — cần thiết để req.ip, req.protocol đúng
+app.set('trust proxy', 1);
+
 // Security headers — tắt contentSecurityPolicy để Swagger UI hoạt động
 app.use(helmet({ contentSecurityPolicy: false }));
 
@@ -40,11 +43,39 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
 
-// CORS — cho phép tất cả origin (sẽ giới hạn sau bằng ALLOWED_ORIGINS)
+// ── CORS ─────────────────────────────────────────────────────────
+// ALLOWED_ORIGINS = danh sách origin hợp lệ, phân cách bằng dấu phẩy
+// VD: https://suckhoethudo.vn,https://backend.suckhoethudo.vn
+const rawOrigins = process.env.ALLOWED_ORIGINS || '';
+const allowedOrigins = rawOrigins
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    // Cho phép request không có origin (Postman, mobile app, server-to-server)
+    if (!origin) return callback(null, true);
+
+    // Nếu không cấu hình ALLOWED_ORIGINS → cho phép tất cả (dev mode)
+    if (allowedOrigins.length === 0) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.warn(`[CORS] Blocked origin: ${origin}`);
+    return callback(new Error(`CORS: origin "${origin}" không được phép`), false);
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Disposition'],
+  maxAge: 86400, // preflight cache 24h
 }));
+
+// Xử lý preflight OPTIONS cho tất cả routes
+app.options('*', cors());
 
 // Rate limiting cho auth endpoints
 const authLimiter = rateLimit({
