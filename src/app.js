@@ -19,6 +19,7 @@ const emailConfirmRoutes = require('./routes/emailConfirm.route');
 const surveyRoutes = require('./routes/survey.route');
 const affiliatedFacilityRoutes = require('./routes/affiliatedFacility.route');
 const reportRoutes = require('./routes/report.route');
+const tradingFacilityRoutes = require('./routes/tradingFacility.route');
 const { initCronJobs } = require('./cron/scheduler');
 const errorHandler = require('./middlewares/error.middleware');
 
@@ -89,6 +90,7 @@ app.use('/api/email-confirm', emailConfirmRoutes);
 app.use('/api/surveys', surveyRoutes);
 app.use('/api/affiliated-facilities', affiliatedFacilityRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/trading-facilities', tradingFacilityRoutes);
 
 app.use(errorHandler);
 

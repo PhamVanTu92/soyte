@@ -19,6 +19,7 @@ const modelsToLoad = [
   'EmailConfirm',
   'Survey',
   'AffiliatedFacility',
+  'TradingFacility',
 ];
 
 for (const modelName of modelsToLoad) {
