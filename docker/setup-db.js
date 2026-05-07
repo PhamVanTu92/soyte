@@ -45,7 +45,7 @@ const makeConn = (database) =>
   });
 
 async function run() {
-  // ── Kết nối master ──────────────────────────────────────────
+  // ── Kết nối master (dùng cho toàn bộ setup, tránh race condition) ──
   const master = makeConn('master');
   try {
     await master.authenticate();
@@ -56,10 +56,7 @@ async function run() {
       IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'${dbName}')
       BEGIN
         CREATE DATABASE [${dbName}];
-        PRINT 'Database ${dbName} đã được tạo.';
       END
-      ELSE
-        PRINT 'Database ${dbName} đã tồn tại, bỏ qua.';
     `);
 
     // Tạo login
@@ -71,45 +68,33 @@ async function run() {
       BEGIN
         CREATE LOGIN [${apiUser}] WITH PASSWORD = N'${apiPass}',
           CHECK_EXPIRATION = OFF, CHECK_POLICY = OFF;
-        PRINT 'Login ${apiUser} đã được tạo.';
       END
-      ELSE
-        PRINT 'Login ${apiUser} đã tồn tại, bỏ qua.';
     `);
 
     console.log(`  ✅ Database [${dbName}] và Login [${apiUser}] sẵn sàng.`);
-  } finally {
-    await master.close();
-  }
 
-  // ── Kết nối target DB — tạo user + gán quyền ───────────────
-  const targetDb = makeConn(dbName);
-  try {
-    await targetDb.authenticate();
+    // Tạo user + gán quyền TRONG target DB, dùng EXEC để chạy trong ngữ cảnh đúng DB
+    // Không mở thêm connection mới — tránh race condition ngay sau CREATE DATABASE
+    await master.query(`
+      EXEC [${dbName}].dbo.sp_executesql N'
+        IF NOT EXISTS (
+          SELECT name FROM sys.database_principals
+          WHERE name = N''${apiUser}'' AND type = ''S''
+        )
+        BEGIN
+          CREATE USER [${apiUser}] FOR LOGIN [${apiUser}];
+        END
 
-    await targetDb.query(`
-      IF NOT EXISTS (
-        SELECT name FROM sys.database_principals
-        WHERE name = N'${apiUser}' AND type = 'S'
-      )
-      BEGIN
-        CREATE USER [${apiUser}] FOR LOGIN [${apiUser}];
-        PRINT 'User ${apiUser} đã được tạo trong database ${dbName}.';
-      END
-      ELSE
-        PRINT 'User ${apiUser} đã tồn tại, bỏ qua.';
-
-      -- Đảm bảo quyền db_owner
-      IF IS_ROLEMEMBER('db_owner', '${apiUser}') = 0
-      BEGIN
-        ALTER ROLE db_owner ADD MEMBER [${apiUser}];
-        PRINT 'Đã cấp db_owner cho ${apiUser}.';
-      END
+        IF IS_ROLEMEMBER(''db_owner'', ''${apiUser}'') = 0
+        BEGIN
+          EXEC sp_addrolemember ''db_owner'', ''${apiUser}'';
+        END
+      '
     `);
 
     console.log(`  ✅ User [${apiUser}] đã có quyền db_owner trên [${dbName}].`);
   } finally {
-    await targetDb.close();
+    await master.close();
   }
 }
 
