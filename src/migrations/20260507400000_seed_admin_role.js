@@ -19,15 +19,23 @@ const isPG = (seq) => (seq.options.dialect || '') === 'postgres';
 // parentName null  → permission gốc (top-level)
 // parentName có giá trị → tự tra id cha theo name
 const MISSING_PERMISSIONS = [
-  // Module admin (dùng trong role.route, trading_facility.route)
+  // Module admin (bypass toàn bộ)
   ['admin',                    'Quyền truy cập toàn bộ chức năng Admin',    null],
 
-  // Module feedback (dùng trực tiếp trong feedback.route)
+  // Module feedback (catch-all cho feedback routes)
   ['feedback',                 'Module Phản hồi (catch-all)',                null],
 
-  // Module survey (dùng trong survey.route: survey.view)
+  // Module survey (survey.route dùng survey.view trực tiếp)
   ['survey',                   'Module Khảo sát',                           null],
   ['survey.view',              'Xem danh sách khảo sát',                    'survey'],
+
+  // Module roles (quản lý vai trò)
+  ['roles',                    'Module Quản lý vai trò',                    null],
+  ['roles.view',               'Xem danh sách vai trò',                     'roles'],
+  ['roles.create',             'Tạo vai trò mới',                           'roles'],
+  ['roles.update',             'Cập nhật vai trò',                          'roles'],
+  ['roles.delete',             'Xóa vai trò',                               'roles'],
+  ['roles.assign',             'Gán vai trò cho người dùng',                'roles'],
 
   // Module trading_facility (cơ sở buôn bán)
   ['trading_facility',         'Module Cơ sở buôn bán dược',                null],
