@@ -20,6 +20,7 @@ const modelsToLoad = [
   'Survey',
   'AffiliatedFacility',
   'TradingFacility',
+  'Role',
 ];
 
 for (const modelName of modelsToLoad) {
@@ -106,6 +107,26 @@ db.Feedback.belongsTo(db.User, { foreignKey: 'user_id', as: 'user' });
 // --- User-Facility Association ---
 db.User.belongsTo(db.SocialFacility, { foreignKey: 'unit', as: 'facility' });
 db.SocialFacility.hasMany(db.User, { foreignKey: 'unit', as: 'users' });
+
+// --- User-Role Association ---
+db.User.belongsTo(db.Role, { foreignKey: 'role_id', as: 'assignedRole' });
+db.Role.hasMany(db.User, { foreignKey: 'role_id', as: 'users' });
+
+// --- Role-Permission Association (N-N) ---
+db.Role.belongsToMany(db.Permission, {
+  through: 'role_permissions',
+  foreignKey: 'role_id',
+  otherKey: 'permission_id',
+  as: 'permissions',
+  timestamps: false,
+});
+db.Permission.belongsToMany(db.Role, {
+  through: 'role_permissions',
+  foreignKey: 'permission_id',
+  otherKey: 'role_id',
+  as: 'roles',
+  timestamps: false,
+});
 
 // ========= END OF CUSTOM ASSOCIATIONS =========
 

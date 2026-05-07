@@ -50,6 +50,18 @@ const options = {
           },
         },
 
+        // ─── Role ─────────────────────────────────────────────────
+        RoleInput: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name: { type: 'string', example: 'Quản lý phòng khám' },
+            description: { type: 'string', example: 'Quản lý toàn bộ phòng khám' },
+            is_active: { type: 'boolean', default: true },
+            permission_ids: { type: 'array', items: { type: 'integer' }, example: [1, 2, 5], description: 'Danh sách permission ID gắn vào role' },
+          },
+        },
+
         // ─── Trading Facility ─────────────────────────────────────
         TradingFacility: {
           type: 'object',
@@ -312,6 +324,7 @@ const options = {
       { name: 'Email', description: 'Cấu hình & xác nhận email' },
       { name: 'Reports', description: 'Báo cáo' },
       { name: 'Trading Facilities', description: 'Cơ sở bán buôn / bán lẻ thuốc' },
+      { name: 'Roles', description: 'Quản lý Role & phân quyền theo role' },
       { name: 'Crawler', description: 'Cào dữ liệu lịch công tác' },
     ],
     paths: {
@@ -1102,6 +1115,99 @@ const options = {
             { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' } },
           ],
           responses: { 200: { description: 'Thành công' } },
+        },
+      },
+
+      // ══════════════════════════════════════════════════════════
+      //  ROLES
+      // ══════════════════════════════════════════════════════════
+      '/api/roles': {
+        get: {
+          tags: ['Roles'], summary: 'Danh sách roles', security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            { name: 'is_active', in: 'query', schema: { type: 'boolean' } },
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+          ],
+          responses: { 200: { description: 'Thành công' } },
+        },
+        post: {
+          tags: ['Roles'], summary: 'Tạo role mới', security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/RoleInput' } } },
+          },
+          responses: { 201: { description: 'Tạo thành công' }, 409: { description: 'Role đã tồn tại' } },
+        },
+      },
+      '/api/roles/assign-user': {
+        put: {
+          tags: ['Roles'], summary: 'Gán / hủy gán role cho user', security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['user_id'],
+                  properties: {
+                    user_id: { type: 'integer', example: 5 },
+                    role_id: { type: 'integer', example: 2, nullable: true, description: 'null để hủy gán role' },
+                  },
+                },
+              },
+            },
+          },
+          responses: { 200: { description: 'Thành công' } },
+        },
+      },
+      '/api/roles/user/{userId}/permissions': {
+        get: {
+          tags: ['Roles'], summary: 'Xem quyền hiệu lực của user (role + cá nhân)', security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { 200: { description: 'Trả về danh sách permissions hiệu lực' } },
+        },
+      },
+      '/api/roles/{id}': {
+        get: {
+          tags: ['Roles'], summary: 'Chi tiết role', security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { 200: { description: 'Thành công' }, 404: { description: 'Không tìm thấy' } },
+        },
+        put: {
+          tags: ['Roles'], summary: 'Cập nhật role', security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/RoleInput' } } },
+          },
+          responses: { 200: { description: 'Cập nhật thành công' } },
+        },
+        delete: {
+          tags: ['Roles'], summary: 'Xóa role', security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { 200: { description: 'Xóa thành công' } },
+        },
+      },
+      '/api/roles/{id}/permissions': {
+        put: {
+          tags: ['Roles'], summary: 'Gán permissions cho role (thay thế toàn bộ)', security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    permission_ids: { type: 'array', items: { type: 'integer' }, example: [1, 2, 3] },
+                  },
+                },
+              },
+            },
+          },
+          responses: { 200: { description: 'Cập nhật permissions thành công' } },
         },
       },
 

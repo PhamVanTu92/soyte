@@ -24,8 +24,8 @@ const verifyToken = async (req, res, next) => {
     const decoded = jwt.verify(token, secret);
     
     // Fetch user details from DB to ensure they exist and get up-to-date info
-    const user = await db.User.findByPk(decoded.id, { 
-        attributes: ['id', 'email', 'full_name', 'role', 'unit', 'type', 'is_verified', 'created_at', 'password_changed_at'],
+    const user = await db.User.findByPk(decoded.id, {
+        attributes: ['id', 'email', 'full_name', 'role', 'role_id', 'unit', 'type', 'is_verified', 'created_at', 'password_changed_at'],
         include: [
           {
             model: db.Permission,
@@ -37,9 +37,28 @@ const verifyToken = async (req, res, next) => {
             model: db.SocialFacility,
             as: 'facility',
             attributes: ['type']
+          },
+          {
+            model: db.Role,
+            as: 'assignedRole',
+            attributes: ['id', 'name'],
+            required: false,
+            include: [{
+              model: db.Permission,
+              as: 'permissions',
+              attributes: ['name'],
+              through: { attributes: [] }
+            }]
           }
         ]
     });
+
+    // Merge permissions: role permissions + individual user permissions (dedup)
+    if (user && user.assignedRole?.permissions?.length) {
+      const individualNames = new Set((user.permissions || []).map(p => p.name));
+      const rolePerms = user.assignedRole.permissions.filter(p => !individualNames.has(p.name));
+      user.permissions = [...(user.permissions || []), ...rolePerms];
+    }
 
     if (!user) {
         return apiResponse.unauthorized(res, 'Invalid token: User not found.');
@@ -80,8 +99,8 @@ const optionalAuth = async (req, res, next) => {
     const secret = process.env.JWT_SECRET;
     const decoded = jwt.verify(token, secret);
     
-    const user = await db.User.findByPk(decoded.id, { 
-      attributes: ['id', 'email', 'full_name', 'role', 'unit', 'type', 'is_verified', 'created_at'],
+    const user = await db.User.findByPk(decoded.id, {
+      attributes: ['id', 'email', 'full_name', 'role', 'role_id', 'unit', 'type', 'is_verified', 'created_at'],
       include: [
         {
           model: db.Permission,
@@ -93,9 +112,27 @@ const optionalAuth = async (req, res, next) => {
           model: db.SocialFacility,
           as: 'facility',
           attributes: ['type']
+        },
+        {
+          model: db.Role,
+          as: 'assignedRole',
+          attributes: ['id', 'name'],
+          required: false,
+          include: [{
+            model: db.Permission,
+            as: 'permissions',
+            attributes: ['name'],
+            through: { attributes: [] }
+          }]
         }
       ]
     });
+
+    if (user && user.assignedRole?.permissions?.length) {
+      const individualNames = new Set((user.permissions || []).map(p => p.name));
+      const rolePerms = user.assignedRole.permissions.filter(p => !individualNames.has(p.name));
+      user.permissions = [...(user.permissions || []), ...rolePerms];
+    }
 
     if (user) {
       if (user.password_changed_at) {
