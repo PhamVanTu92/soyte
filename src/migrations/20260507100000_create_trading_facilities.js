@@ -10,39 +10,51 @@ const isPG = (seq) => (seq.options.dialect || '') === 'postgres';
 module.exports = {
   async up(sequelize, transaction) {
     if (isPG(sequelize)) {
-      await sequelize.query(`
-        CREATE TYPE IF NOT EXISTS "trading_type_enum" AS ENUM ('wholesale', 'retail')
-      `, { transaction }).catch(() => {}); // ignore if already exists
-
+      // Tạo bảng (dùng VARCHAR + CHECK thay vì ENUM để tránh lỗi transaction)
       await sequelize.query(`
         CREATE TABLE IF NOT EXISTS "trading_facilities" (
-          "id"                  SERIAL PRIMARY KEY,
-          "certificate_number"  VARCHAR(100),
-          "name"                TEXT         NOT NULL,
-          "person_in_charge"    VARCHAR(255),
+          "id"                   SERIAL PRIMARY KEY,
+          "certificate_number"   VARCHAR(100),
+          "name"                 TEXT         NOT NULL,
+          "person_in_charge"     VARCHAR(255),
           "practice_certificate" VARCHAR(100),
-          "facility_type"       VARCHAR(100),
-          "trading_type"        VARCHAR(20)  NOT NULL CHECK ("trading_type" IN ('wholesale','retail')),
-          "address"             TEXT,
-          "issue_date"          VARCHAR(30),
-          "gps_number"          VARCHAR(50),
-          "gps_issue_date"      VARCHAR(30),
-          "is_active"           BOOLEAN      NOT NULL DEFAULT TRUE,
-          "created_at"          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-          "updated_at"          TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+          "facility_type"        VARCHAR(100),
+          "trading_type"         VARCHAR(20)  NOT NULL
+            CHECK ("trading_type" IN ('wholesale','retail')),
+          "address"              TEXT,
+          "issue_date"           VARCHAR(30),
+          "gps_number"           VARCHAR(50),
+          "gps_issue_date"       VARCHAR(30),
+          "is_active"            BOOLEAN      NOT NULL DEFAULT TRUE,
+          "created_at"           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+          "updated_at"           TIMESTAMPTZ  NOT NULL DEFAULT NOW()
         )
       `, { transaction });
 
-      await sequelize.query(`
-        CREATE INDEX IF NOT EXISTS idx_tf_trading_type ON "trading_facilities"("trading_type");
-        CREATE INDEX IF NOT EXISTS idx_tf_facility_type ON "trading_facilities"("facility_type");
-        CREATE INDEX IF NOT EXISTS idx_tf_is_active ON "trading_facilities"("is_active");
-        CREATE INDEX IF NOT EXISTS idx_tf_cert ON "trading_facilities"("certificate_number");
-      `, { transaction });
+      // Tạo từng index riêng lẻ
+      await sequelize.query(
+        `CREATE INDEX IF NOT EXISTS idx_tf_trading_type ON "trading_facilities"("trading_type")`,
+        { transaction }
+      );
+      await sequelize.query(
+        `CREATE INDEX IF NOT EXISTS idx_tf_facility_type ON "trading_facilities"("facility_type")`,
+        { transaction }
+      );
+      await sequelize.query(
+        `CREATE INDEX IF NOT EXISTS idx_tf_is_active ON "trading_facilities"("is_active")`,
+        { transaction }
+      );
+      await sequelize.query(
+        `CREATE INDEX IF NOT EXISTS idx_tf_cert ON "trading_facilities"("certificate_number")`,
+        { transaction }
+      );
 
     } else {
       await sequelize.query(`
-        IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'trading_facilities')
+        IF NOT EXISTS (
+          SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+          WHERE TABLE_NAME = 'trading_facilities'
+        )
         BEGIN
           CREATE TABLE [trading_facilities] (
             [id]                   INT IDENTITY(1,1) PRIMARY KEY,
@@ -71,7 +83,8 @@ module.exports = {
       await sequelize.query(`DROP TABLE IF EXISTS "trading_facilities"`, { transaction });
     } else {
       await sequelize.query(`
-        IF OBJECT_ID('trading_facilities','U') IS NOT NULL DROP TABLE [trading_facilities]
+        IF OBJECT_ID('trading_facilities','U') IS NOT NULL
+          DROP TABLE [trading_facilities]
       `, { transaction });
     }
   },
