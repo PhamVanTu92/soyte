@@ -870,6 +870,50 @@ const options = {
           responses: { 200: { description: 'Thành công' } },
         },
       },
+      '/api/feedbacks/evaluate-dashboard': {
+        get: {
+          tags: ['Feedbacks'],
+          summary: 'Dashboard giám sát chất lượng (biểu đồ evaluate)',
+          description: 'Không truyền survey_key → tất cả khảo sát evaluate trong 1 năm gần nhất. Truyền survey_key → theo cuộc khảo sát cụ thể. Trả về tổng quan, phân bố điểm, xu hướng theo ngày và điểm TB từng section.',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'survey_key', in: 'query', required: false, schema: { type: 'integer' }, description: 'ID của cuộc khảo sát. Bỏ trống để lấy tất cả trong 1 năm.' },
+          ],
+          responses: {
+            200: {
+              description: 'Thành công',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean' },
+                      message: { type: 'string' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          meta: { type: 'object', properties: { surveys: { type: 'array' }, totalFeedbacks: { type: 'integer' } } },
+                          overview: {
+                            type: 'object',
+                            properties: {
+                              total: { type: 'integer' },
+                              withRating: { type: 'integer' },
+                              satisfactionRate: { type: 'number' },
+                              averageRating: { type: 'number' },
+                              ratingDistribution: { type: 'object' },
+                            },
+                          },
+                          forms: { type: 'array', items: { type: 'object', properties: { id: { type: 'integer' }, name: { type: 'string' }, surveyType: { type: 'string', enum: ['ngoai_tru', 'noi_tru', 'tiem_chung', 'other'] }, overview: { type: 'object' }, trend: { type: 'array' }, sections: { type: 'array' } } } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       '/api/feedbacks/check-unit': {
         get: {
           tags: ['Feedbacks'],

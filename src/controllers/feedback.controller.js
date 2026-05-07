@@ -76,6 +76,16 @@ const deleteFeedback = async (req, res, next) => {
   }
 };
 
+const getEvaluateDashboard = async (req, res, next) => {
+  try {
+    const query = { survey_key: req.query.survey_key || null };
+    const result = await feedbackService.getEvaluateDashboard(query);
+    res.status(200).json({ success: true, message: 'Lấy dữ liệu dashboard giám sát chất lượng thành công', data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createFeedback,
   getFeedbacks,
@@ -84,4 +94,5 @@ module.exports = {
   getFeedbackComparison,
   checkUnitSubmission,
   deleteFeedback,
+  getEvaluateDashboard,
 };

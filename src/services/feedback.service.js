@@ -872,6 +872,263 @@ const deleteFeedback = async (id) => {
   return result;
 };
 
+/**
+ * Dashboard biểu đồ giám sát chất lượng (evaluate)
+ *
+ * - Không dùng date range
+ * - Không truyền survey_key → tất cả surveys evaluate trong 1 năm gần nhất
+ * - Truyền survey_key → theo đúng cuộc khảo sát đó
+ *
+ * Trả về:
+ *   overview:  tổng phiếu, tỷ lệ hài lòng, điểm TB, phân bố sao
+ *   forms[]:   mỗi form (nội trú / ngoại trú / tiêm chủng)
+ *              ├─ trend[]:    đường xu hướng theo ngày (điểm TB từng mục + chung)
+ *              └─ sections[]: điểm TB từng mục (cho biểu đồ cột)
+ */
+const getEvaluateDashboard = async (query) => {
+  const { survey_key } = query;
+
+  // ── 1. Xác định danh sách survey ──────────────────────────────────
+  let surveysInfo = [];
+
+  if (survey_key) {
+    const sv = await db.Survey.findByPk(survey_key);
+    if (!sv) throw new ApiError(404, 'Không tìm thấy cuộc khảo sát');
+    surveysInfo = [sv];
+  } else {
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    surveysInfo = await db.Survey.findAll({
+      where: { type: 'evaluate', created_at: { [Op.gte]: oneYearAgo } },
+      order: [['id', 'ASC']],
+    });
+  }
+
+  const surveyKeys = surveysInfo.map(s => String(s.id));
+
+  const empty = {
+    meta: { surveys: [], totalFeedbacks: 0 },
+    overview: { total: 0, satisfactionRate: 0, averageRating: 0, ratingDistribution: { star5: 0, star4: 0, star3: 0, star2: 0, star1: 0, star0: 0 } },
+    forms: [],
+  };
+  if (surveyKeys.length === 0) return empty;
+
+  // ── 2. Fetch feedbacks (raw) ───────────────────────────────────────
+  const rawFeedbacks = await db.Feedback.findAll({
+    where: { type: 'evaluate', survey_key: { [Op.in]: surveyKeys } },
+    attributes: ['id', 'form_id', 'user_id', 'created_at', 'survey_key'],
+    raw: true,
+  });
+
+  if (rawFeedbacks.length === 0) return { ...empty, meta: { surveys: surveysInfo.map(s => ({ id: s.id, name: s.name })), totalFeedbacks: 0 } };
+
+  // ── 3. Fetch options theo batch song song ──────────────────────────
+  const feedbackIds = rawFeedbacks.map(f => f.id);
+  const optionsByFb = {}; // fbId → [{ sectionName, ratingValue, data }]
+
+  const BATCH = 500, CONC = 8;
+  const allOptRows = [];
+  for (let i = 0; i < feedbackIds.length; i += BATCH * CONC) {
+    const promises = [];
+    for (let j = i; j < Math.min(i + BATCH * CONC, feedbackIds.length); j += BATCH) {
+      promises.push(
+        sequelize.query(
+          `SELECT fs."feedback_id", fs."name" AS section_name, fo."data"
+           FROM "feedback_sections" fs
+           LEFT JOIN "feedback_options" fo ON fo."feedback_section_id" = fs."id"
+           WHERE fs."feedback_id" IN (:ids)`,
+          { replacements: { ids: feedbackIds.slice(j, j + BATCH) }, type: sequelize.QueryTypes.SELECT }
+        )
+      );
+    }
+    (await Promise.all(promises)).forEach(r => allOptRows.push(...r));
+  }
+
+  // Parse rating từ option.data
+  const parseRating = (dataRaw) => {
+    let d = dataRaw;
+    if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return null; } }
+    if (!d) return null;
+    const v = d.ratingVote?.value ?? d.rating?.value ?? d.answerValue;
+    if (v === undefined || v === null) return null;
+    const n = Number(v);
+    return (!isNaN(n) && n >= 0 && n <= 5) ? n : null;
+  };
+
+  allOptRows.forEach(row => {
+    const fbId = row.feedback_id;
+    if (!fbId) return;
+    if (!optionsByFb[fbId]) optionsByFb[fbId] = [];
+    const rating = parseRating(row.data);
+    if (rating !== null) optionsByFb[fbId].push({ sectionName: row.section_name || '', rating });
+  });
+
+  // ── 4. Load forms → xác định loại (nội trú / ngoại trú / tiêm chủng) ──
+  const formIdSet = [...new Set(rawFeedbacks.map(f => f.form_id).filter(Boolean))];
+  const forms = formIdSet.length ? await db.Form.findAll({ where: { id: { [Op.in]: formIdSet } }, raw: true }) : [];
+
+  const normStr = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '');
+  const FORM_TYPE = {}; // formId → 'noi_tru' | 'ngoai_tru' | 'tiem_chung' | 'other'
+  const FORM_NAME = {}; // formId → tên form
+  forms.forEach(f => {
+    const nm = normStr(f.name);
+    FORM_NAME[f.id] = f.name;
+    if (nm.includes('noitru') || f.id == 19)         FORM_TYPE[f.id] = 'noi_tru';
+    else if (nm.includes('ngoaitru') || f.id == 20)  FORM_TYPE[f.id] = 'ngoai_tru';
+    else if (nm.includes('tiem') || nm.includes('vaccine') || f.id == 21) FORM_TYPE[f.id] = 'tiem_chung';
+    else                                              FORM_TYPE[f.id] = 'other';
+  });
+
+  // ── 5. Aggregate toàn cục (overview) ──────────────────────────────
+  const ratingDist = { star5: 0, star4: 0, star3: 0, star2: 0, star1: 0, star0: 0 };
+  let totalRatingSum = 0, totalRatingCount = 0, satisfiedFbCount = 0;
+
+  // Tính điểm trung bình từng feedback để xác định hài lòng (>= 4)
+  const fbAvgRating = {};
+  rawFeedbacks.forEach(fb => {
+    const opts = optionsByFb[fb.id] || [];
+    if (opts.length === 0) return;
+    const sum = opts.reduce((a, o) => a + o.rating, 0);
+    fbAvgRating[fb.id] = sum / opts.length;
+    opts.forEach(o => {
+      ratingDist[`star${Math.round(o.rating)}`] = (ratingDist[`star${Math.round(o.rating)}`] || 0) + 1;
+      totalRatingSum += o.rating;
+      totalRatingCount++;
+    });
+  });
+
+  const satisfiedFbs = rawFeedbacks.filter(fb => fbAvgRating[fb.id] !== undefined && fbAvgRating[fb.id] >= 4);
+  const fbsWithRating = rawFeedbacks.filter(fb => fbAvgRating[fb.id] !== undefined);
+
+  // ── 6. Aggregate theo từng form ───────────────────────────────────
+  // Group feedbacks by form_id
+  const fbsByForm = {};
+  rawFeedbacks.forEach(fb => {
+    const fid = String(fb.form_id);
+    if (!fbsByForm[fid]) fbsByForm[fid] = [];
+    fbsByForm[fid].push(fb);
+  });
+
+  const formResults = [];
+
+  for (const [formId, fbs] of Object.entries(fbsByForm)) {
+    if (!fbs.length) continue;
+
+    // ── Per-section aggregate ──────────────────────────────────
+    // sectionMap: sectionName → { sum, count, perDate: { dateStr → { sum, count } } }
+    const sectionMap = {};
+    const overallPerDate = {}; // dateStr → { sum, count }
+
+    fbs.forEach(fb => {
+      const opts = optionsByFb[fb.id] || [];
+      if (!opts.length) return;
+
+      const d = new Date(fb.created_at);
+      const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+      // Overall trend for this fb
+      const fbSum = opts.reduce((a, o) => a + o.rating, 0);
+      const fbAvg = fbSum / opts.length;
+      if (!overallPerDate[dateStr]) overallPerDate[dateStr] = { sum: 0, count: 0 };
+      overallPerDate[dateStr].sum += fbAvg;
+      overallPerDate[dateStr].count++;
+
+      // Group by section
+      const grouped = {};
+      opts.forEach(o => {
+        if (!grouped[o.sectionName]) grouped[o.sectionName] = [];
+        grouped[o.sectionName].push(o.rating);
+      });
+
+      Object.entries(grouped).forEach(([sName, ratings]) => {
+        if (!sectionMap[sName]) sectionMap[sName] = { sum: 0, count: 0, perDate: {} };
+        const sAvg = ratings.reduce((a, v) => a + v, 0) / ratings.length;
+        sectionMap[sName].sum += sAvg;
+        sectionMap[sName].count++;
+        if (!sectionMap[sName].perDate[dateStr]) sectionMap[sName].perDate[dateStr] = { sum: 0, count: 0 };
+        sectionMap[sName].perDate[dateStr].sum += sAvg;
+        sectionMap[sName].perDate[dateStr].count++;
+      });
+    });
+
+    // ── Trend: sorted dates ────────────────────────────────────
+    const allDates = [...new Set([
+      ...Object.keys(overallPerDate),
+      ...Object.values(sectionMap).flatMap(s => Object.keys(s.perDate))
+    ])].sort((a, b) => {
+      // Sort by dd/mm
+      const [da, ma] = a.split('/').map(Number);
+      const [db2, mb] = b.split('/').map(Number);
+      return ma !== mb ? ma - mb : da - db2;
+    });
+
+    const sectionNames = Object.keys(sectionMap);
+
+    const trend = allDates.map(date => {
+      const overall = overallPerDate[date];
+      const point = {
+        date,
+        overall: overall && overall.count ? parseFloat((overall.sum / overall.count).toFixed(2)) : null,
+      };
+      sectionNames.forEach(sn => {
+        const sd = sectionMap[sn].perDate[date];
+        point[sn] = sd && sd.count ? parseFloat((sd.sum / sd.count).toFixed(2)) : null;
+      });
+      return point;
+    });
+
+    // ── Sections: điểm TB toàn kỳ ─────────────────────────────
+    const sections = sectionNames.map(sn => {
+      const sm = sectionMap[sn];
+      const avg = sm.count > 0 ? parseFloat((sm.sum / sm.count).toFixed(2)) : 0;
+      return { name: sn, averageScore: avg, responseCount: sm.count };
+    });
+
+    // ── Form overview ──────────────────────────────────────────
+    const formFbsWithRating = fbs.filter(fb => fbAvgRating[fb.id] !== undefined);
+    const formSatisfied = formFbsWithRating.filter(fb => fbAvgRating[fb.id] >= 4);
+    const formRatingSum = formFbsWithRating.reduce((a, fb) => a + fbAvgRating[fb.id], 0);
+
+    formResults.push({
+      id: parseInt(formId),
+      name: FORM_NAME[formId] || `Form ${formId}`,
+      surveyType: FORM_TYPE[formId] || 'other',
+      overview: {
+        total: fbs.length,
+        withRating: formFbsWithRating.length,
+        satisfactionRate: formFbsWithRating.length > 0
+          ? parseFloat(((formSatisfied.length / formFbsWithRating.length) * 100).toFixed(1)) : 0,
+        averageRating: formFbsWithRating.length > 0
+          ? parseFloat((formRatingSum / formFbsWithRating.length).toFixed(2)) : 0,
+      },
+      trend,
+      sections,
+      sectionNames, // cho frontend dễ vẽ legend
+    });
+  }
+
+  // Sắp xếp form theo thứ tự: ngoai_tru → noi_tru → tiem_chung → other
+  const ORDER = { ngoai_tru: 0, noi_tru: 1, tiem_chung: 2, other: 3 };
+  formResults.sort((a, b) => (ORDER[a.surveyType] ?? 9) - (ORDER[b.surveyType] ?? 9));
+
+  return {
+    meta: {
+      surveys: surveysInfo.map(s => ({ id: s.id, name: s.name, dateFrom: s.date_from, dateTo: s.date_to })),
+      totalFeedbacks: rawFeedbacks.length,
+    },
+    overview: {
+      total: rawFeedbacks.length,
+      withRating: fbsWithRating.length,
+      satisfactionRate: fbsWithRating.length > 0
+        ? parseFloat(((satisfiedFbs.length / fbsWithRating.length) * 100).toFixed(1)) : 0,
+      averageRating: totalRatingCount > 0
+        ? parseFloat((totalRatingSum / totalRatingCount).toFixed(2)) : 0,
+      ratingDistribution: ratingDist,
+    },
+    forms: formResults,
+  };
+};
+
 module.exports = {
   createFeedback,
   getFeedbacks,
@@ -880,4 +1137,5 @@ module.exports = {
   getFeedbackComparison,
   checkUnitSubmission,
   deleteFeedback,
+  getEvaluateDashboard,
 };

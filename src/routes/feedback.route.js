@@ -96,6 +96,13 @@ router.post('/compare', auth, (req, res, next) => {
 // @access  Private/Feedback Permission
 router.get('/check-unit', feedbackController.checkUnitSubmission);
 
+// @route   GET api/feedbacks/evaluate-dashboard
+// @desc    Dashboard dữ liệu biểu đồ giám sát chất lượng (type=evaluate)
+//          Không truyền survey_key → tất cả cuộc khảo sát trong 1 năm gần nhất
+//          Truyền survey_key → theo từng cuộc khảo sát cụ thể
+// @access  Private/Evaluate Permission
+router.get('/evaluate-dashboard', auth, checkPermission(['feedback', 'evaluate.list_feedback.view', 'report.report_2.view']), feedbackController.getEvaluateDashboard);
+
 // @route   GET api/feedbacks/:id
 // @desc    Get feedback by ID
 // @access  Private/Feedback Permission
