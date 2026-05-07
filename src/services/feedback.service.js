@@ -192,7 +192,7 @@ const getFeedbacks = async (queryOptions) => {
   if (unitKeys && unitKeys.length > 0) {
     const safeLike = unitKeys
       .map(key => key.replace(/'/g, "''"))
-      .map(key => `[info] LIKE N'%${key}%'`)
+      .map(key => `"info"::text LIKE '%${key}%'`)
       .join(' OR ');
     where[Op.and] = sequelize.literal(`(${safeLike})`);
   }
@@ -323,31 +323,31 @@ const getFeedbackStats = async (query) => {
     }
 
     // ── Build WHERE SQL ───────────────────────────────────────
-    const conditions = [`f.[survey_key] IS NOT NULL`];
+    const conditions = [`f."survey_key" IS NOT NULL`];
     const replacements = {};
 
-    if (type) { conditions.push(`f.[type] = :type`); replacements.type = type; }
+    if (type) { conditions.push(`f."type" = :type`); replacements.type = type; }
     if (survey_key) {
       const keys = Array.isArray(survey_key) ? survey_key : survey_key.split(',');
-      conditions.push(`f.[survey_key] IN (:surveyKeys)`);
+      conditions.push(`f."survey_key" IN (:surveyKeys)`);
       replacements.surveyKeys = keys;
     }
     try {
       const range = getDateRange(startDate, endDate);
       if (range && range[0] && range[1]) {
-        conditions.push(`f.[created_at] BETWEEN :dateFrom AND :dateTo`);
+        conditions.push(`f."created_at" BETWEEN :dateFrom AND :dateTo`);
         replacements.dateFrom = range[0]; replacements.dateTo = range[1];
       } else if (range && range[0]) {
-        conditions.push(`f.[created_at] >= :dateFrom`);
+        conditions.push(`f."created_at" >= :dateFrom`);
         replacements.dateFrom = range[0];
       } else if (range && range[1]) {
-        conditions.push(`f.[created_at] <= :dateTo`);
+        conditions.push(`f."created_at" <= :dateTo`);
         replacements.dateTo = range[1];
       }
     } catch (_) {}
 
     if (unitKeys && unitKeys.length > 0) {
-      const likeParts = unitKeys.map(k => k.replace(/'/g, "''")).map(k => `f.[info] LIKE N'%${k}%'`).join(' OR ');
+      const likeParts = unitKeys.map(k => k.replace(/'/g, "''")).map(k => `f."info"::text LIKE '%${k}%'`).join(' OR ');
       conditions.push(`(${likeParts})`);
     }
 
@@ -356,7 +356,7 @@ const getFeedbackStats = async (query) => {
     // ── typeKeys (unit_type): load info → JS filter → narrow WHERE ─
     if (typeKeys !== null && !unitKeys) {
       const infoRows = await sequelize.query(
-        `SELECT f.[id], f.[info] FROM [feedbacks] f WHERE ${whereSQL}`,
+        `SELECT f."id", f."info" FROM "feedbacks" f WHERE ${whereSQL}`,
         { replacements, type: sequelize.QueryTypes.SELECT }
       );
       const filteredIds = infoRows
@@ -372,8 +372,8 @@ const getFeedbackStats = async (query) => {
 
       if (filteredIds.length === 0) return emptyResult();
 
-      whereSQL = `f.[survey_key] IS NOT NULL AND f.[id] IN (:filteredIds)`;
-      if (type) whereSQL += ` AND f.[type] = :type`;
+      whereSQL = `f."survey_key" IS NOT NULL AND f."id" IN (:filteredIds)`;
+      if (type) whereSQL += ` AND f."type" = :type`;
       Object.keys(replacements).forEach(k => { if (k !== 'type') delete replacements[k]; });
       replacements.filteredIds = filteredIds;
     }
@@ -382,14 +382,14 @@ const getFeedbackStats = async (query) => {
     const [overviewRows, trendRows] = await Promise.all([
       sequelize.query(
         `SELECT COUNT(*) AS total,
-                SUM(CASE WHEN f.[status] = 'approved' THEN 1 ELSE 0 END) AS approved_count
-         FROM [feedbacks] f WHERE ${whereSQL}`,
+                SUM(CASE WHEN f."status" = 'approved' THEN 1 ELSE 0 END) AS approved_count
+         FROM "feedbacks" f WHERE ${whereSQL}`,
         { replacements, type: sequelize.QueryTypes.SELECT }
       ),
       sequelize.query(
-        `SELECT CAST(f.[created_at] AS DATE) AS date_val, COUNT(*) AS cnt
-         FROM [feedbacks] f WHERE ${whereSQL}
-         GROUP BY CAST(f.[created_at] AS DATE) ORDER BY date_val`,
+        `SELECT f."created_at"::DATE AS date_val, COUNT(*) AS cnt
+         FROM "feedbacks" f WHERE ${whereSQL}
+         GROUP BY f."created_at"::DATE ORDER BY date_val`,
         { replacements, type: sequelize.QueryTypes.SELECT }
       ),
     ]);
@@ -400,8 +400,8 @@ const getFeedbackStats = async (query) => {
 
     // ── STEP 2: Lấy feedback IDs + metadata ──────────────────
     const feedbackRows = await sequelize.query(
-      `SELECT f.[id], f.[form_id], f.[type], f.[status], f.[created_at]
-       FROM [feedbacks] f WHERE ${whereSQL} ORDER BY f.[id]`,
+      `SELECT f."id", f."form_id", f."type", f."status", f."created_at"
+       FROM "feedbacks" f WHERE ${whereSQL} ORDER BY f."id"`,
       { replacements, type: sequelize.QueryTypes.SELECT }
     );
 
@@ -421,11 +421,11 @@ const getFeedbackStats = async (query) => {
         const batch = feedbackIds.slice(j, j + BATCH_SIZE);
         batchPromises.push(
           sequelize.query(
-            `SELECT fs.[feedback_id], fs.[name] AS s_name,
-                    fo.[tiendo], fo.[danhgia], fo.[data]
-             FROM [feedback_sections] fs
-             LEFT JOIN [feedback_options] fo ON fo.[feedback_section_id] = fs.[id]
-             WHERE fs.[feedback_id] IN (:ids)`,
+            `SELECT fs."feedback_id", fs."name" AS s_name,
+                    fo."tiendo", fo."danhgia", fo."data"
+             FROM "feedback_sections" fs
+             LEFT JOIN "feedback_options" fo ON fo."feedback_section_id" = fs."id"
+             WHERE fs."feedback_id" IN (:ids)`,
             { replacements: { ids: batch }, type: sequelize.QueryTypes.SELECT }
           )
         );

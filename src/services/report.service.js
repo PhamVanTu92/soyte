@@ -349,10 +349,10 @@ const getReportKSHL = async (query) => {
                 const batch = feedbackIds.slice(j, j + BATCH_SIZE);
                 batchPromises.push(
                     sequelize.query(
-                        `SELECT fs.[feedback_id], fo.[data]
-                         FROM [feedback_sections] fs
-                         LEFT JOIN [feedback_options] fo ON fo.[feedback_section_id] = fs.[id]
-                         WHERE fs.[feedback_id] IN (:ids)`,
+                        `SELECT fs."feedback_id", fo."data"
+                         FROM "feedback_sections" fs
+                         LEFT JOIN "feedback_options" fo ON fo."feedback_section_id" = fs."id"
+                         WHERE fs."feedback_id" IN (:ids)`,
                         { replacements: { ids: batch }, type: QueryTypes.SELECT }
                     )
                 );
