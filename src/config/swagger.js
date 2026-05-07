@@ -523,7 +523,8 @@ const options = {
       '/api/users/{id}/permissions': {
         post: {
           tags: ['Users'],
-          summary: 'Gán quyền cho người dùng',
+          summary: 'Gán quyền cá nhân cho người dùng (chỉ khi user KHÔNG có role)',
+          description: '⚠️ Trả về lỗi 400 nếu user đang được gán role — hãy chỉnh sửa permissions của role hoặc hủy gán role trước.',
           security: [{ bearerAuth: [] }],
           parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
           requestBody: {
@@ -533,12 +534,43 @@ const options = {
                 schema: {
                   type: 'object',
                   required: ['permissions'],
-                  properties: { permissions: { type: 'array', items: { type: 'string' }, example: ['posts.view', 'work_schedule'] } },
+                  properties: {
+                    permissions: { type: 'array', items: { type: 'string' }, example: ['posts.view', 'work_schedule'] },
+                  },
                 },
               },
             },
           },
-          responses: { 200: { description: 'Gán quyền thành công' } },
+          responses: {
+            200: { description: 'Gán quyền thành công' },
+            400: { description: 'User đang có role — không thể sửa quyền cá nhân' },
+          },
+        },
+      },
+      '/api/users/{id}/role': {
+        put: {
+          tags: ['Users'],
+          summary: 'Gán / hủy gán role cho người dùng',
+          description: 'Truyền `role_id: null` để hủy gán role. Khi gán role, permissions sẽ tự động lấy từ role đó.',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    role_id: { type: 'integer', nullable: true, example: 2, description: 'ID của role cần gán. null = hủy gán' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Thành công — trả về user với permissions mới theo role' },
+            404: { description: 'Không tìm thấy user hoặc role' },
+          },
         },
       },
       '/api/users/leaders': {

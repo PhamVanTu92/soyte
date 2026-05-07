@@ -62,6 +62,7 @@ router.delete(
   userController.deleteUser
 );
 
+// POST /api/users/:id/permissions — gán permissions cá nhân (bị block nếu user có role)
 router.post(
   '/:id/permissions',
   authorize(['admin']),
@@ -69,6 +70,16 @@ router.post(
   param('id').isInt({ min: 1 }),
   body('permissions').isArray().withMessage('Permissions must be an array.'),
   userController.assignPermissions
+);
+
+// PUT /api/users/:id/role — gán / hủy gán role cho user
+router.put(
+  '/:id/role',
+  authorize(['admin']),
+  checkPermission(['users']),
+  param('id').isInt({ min: 1 }),
+  body('role_id').optional({ nullable: true }),
+  userController.assignRole
 );
 
 module.exports = router;
