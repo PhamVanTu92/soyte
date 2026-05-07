@@ -92,7 +92,7 @@ const deleteRole = async (id) => {
   if (!role) throw new ApiError(404, 'Không tìm thấy role');
 
   // Hủy gán role khỏi tất cả users trước khi xóa
-  await db.User.update({ role_id: null }, { where: { role_id: id } });
+  await db.User.update({ role_id: null }, { where: { role_id: parseInt(id) } });
   await role.destroy();
   return { id: parseInt(id) };
 };

@@ -2,22 +2,7 @@ const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
   class Role extends Model {
-    static associate(models) {
-      // Role <-> Permission (N-N qua role_permissions)
-      Role.belongsToMany(models.Permission, {
-        through: 'role_permissions',
-        foreignKey: 'role_id',
-        otherKey: 'permission_id',
-        as: 'permissions',
-        timestamps: false,
-      });
-
-      // Role -> User (1-N)
-      Role.hasMany(models.User, {
-        foreignKey: 'role_id',
-        as: 'users',
-      });
-    }
+    // Associations được định nghĩa tập trung trong src/models/index.js
   }
 
   Role.init({
