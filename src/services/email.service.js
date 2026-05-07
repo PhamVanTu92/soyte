@@ -1,6 +1,20 @@
 const nodemailer = require('nodemailer');
 const path = require('path');
+const fs = require('fs');
 const db = require('../models');
+
+// Đường dẫn file hướng dẫn đính kèm
+const GUIDE_FILE_PATH = path.join(__dirname, '../../uploads/documents/HƯỚNG DẪN SỬ DỤNG HỆ THỐNG QUẢN TRỊ SỞ Y TẾ HÀ NỘI.docx');
+const GUIDE_FILE_NAME = 'HƯỚNG DẪN SỬ DỤNG HỆ THỐNG QUẢN TRỊ SỞ Y TẾ HÀ NỘI.docx';
+
+/** Trả về mảng attachments — rỗng nếu file không tồn tại */
+function buildAttachments() {
+  if (fs.existsSync(GUIDE_FILE_PATH)) {
+    return [{ filename: GUIDE_FILE_NAME, path: GUIDE_FILE_PATH }];
+  }
+  console.warn('[EmailService] File hướng dẫn không tồn tại, bỏ qua attachment:', GUIDE_FILE_PATH);
+  return [];
+}
 
 /**
  * Service to handle email sending using Nodemailer.
@@ -84,12 +98,7 @@ class EmailService {
           <p>Trân trọng,<br>Đội ngũ hỗ trợ kỹ thuật.</p>
         </div>
       `,
-      attachments: [
-        {
-          filename: 'HƯỚNG DẪN SỬ DỤNG HỆ THỐNG QUẢN TRỊ SỞ Y TẾ HÀ NỘI.docx', // Tên file hiển thị trong mail
-          path: path.join(__dirname, '../../uploads/documents/HƯỚNG DẪN SỬ DỤNG HỆ THỐNG QUẢN TRỊ SỞ Y TẾ HÀ NỘI.docx'), // Đường dẫn vật lý đến file trên server
-        }
-      ]
+      attachments: buildAttachments(),
     };
 
     return this._send(mailOptions);
@@ -125,12 +134,7 @@ class EmailService {
           <p>Trân trọng,<br>Đội ngũ hỗ trợ kỹ thuật.</p>
         </div>
       `,
-      attachments: [
-        {
-          filename: 'HƯỚNG DẪN SỬ DỤNG HỆ THỐNG QUẢN TRỊ SỞ Y TẾ HÀ NỘI.docx', // Tên file hiển thị trong mail
-          path: path.join(__dirname, '../../uploads/documents/HƯỚNG DẪN SỬ DỤNG HỆ THỐNG QUẢN TRỊ SỞ Y TẾ HÀ NỘI.docx'), // Đường dẫn vật lý đến file trên server
-        }
-      ]
+      attachments: buildAttachments(),
     };
 
     return this._send(mailOptions);
