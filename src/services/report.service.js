@@ -639,42 +639,68 @@ const getReportKSHL = async (query) => {
 };
 
 // ── Báo cáo Giám sát y tế (GSAT) ────────────────────────────────
-// Tách riêng khỏi getReportKSHL. Hỗ trợ user-unit-aware: nếu người dùng
-// được gán vào một cơ sở y tế cụ thể, mục 1/2/3 chỉ hiển thị dữ liệu
-// của cơ sở đó. Phụ lục luôn hiển thị đầy đủ.
+// Lọc theo survey_key (= Survey.id). Không dùng date range.
+// Hỗ trợ user-unit-aware: nếu người dùng được gán cơ sở y tế cụ thể,
+// mục 1/2/3 chỉ hiển thị dữ liệu đơn vị đó; phụ lục luôn đầy đủ.
 const getReportGSAT = async (query, userContext = {}) => {
-    let { startDate, endDate, survey_key } = query;
-    if (!survey_key) survey_key = '2'; // default: health monitoring survey
-
+    const survey_key = query.survey_key ? String(query.survey_key) : null;
     const { userUnitId } = userContext;
 
-    // ── 1. Fetch raw feedbacks ──────────────────────────────────────
-    const where = { type: 'evaluate' };
-    where.survey_key = { [Op.in]: Array.isArray(survey_key) ? survey_key : String(survey_key).split(',') };
-    const range = getDateRange(startDate, endDate);
-    if (range) {
-        if (range[0] && range[1]) where.created_at = { [Op.between]: range };
-        else if (range[0]) where.created_at = { [Op.gte]: range[0] };
-        else if (range[1]) where.created_at = { [Op.lte]: range[1] };
-    }
+    // ── 1. Load Survey → lấy form_ids và build formTypeMap ────────
+    // Chạy song song: load survey + load tất cả SocialFacility
+    const [survey, allUnits] = await Promise.all([
+        survey_key
+            ? db.Survey.findByPk(survey_key)
+            : db.Survey.findOne({ where: { type: 'evaluate', status: true }, order: [['id', 'DESC']] }),
+        db.SocialFacility.findAll(),
+    ]);
 
+    if (!survey) throw new Error('Không tìm thấy cuộc khảo sát. Vui lòng truyền survey_key hợp lệ.');
+
+    const surveyId   = String(survey.id);
+    const surveyName = survey.name || '';
+
+    // Load các form thuộc survey này
+    const formIds = Array.isArray(survey.form_ids) ? survey.form_ids : [];
+    const forms   = formIds.length > 0
+        ? await db.Form.findAll({ where: { id: { [Op.in]: formIds } }, raw: true })
+        : await db.Form.findAll({ where: { type: 'evaluate' }, raw: true });
+
+    // Xác định loại khảo sát từ tên form (chuẩn hoá tiếng Việt)
+    const normStr = (s) => (s || '').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '');
+
+    const formTypeMap = {}; // formId → 'noi_tru' | 'ngoai_tru' | 'tiem_chung'
+    forms.forEach(f => {
+        const sId = String(f.id);
+        const nm  = normStr(f.name);
+        if (nm.includes('noitru'))                        formTypeMap[sId] = 'noi_tru';
+        else if (nm.includes('ngoaitru'))                 formTypeMap[sId] = 'ngoai_tru';
+        else if (nm.includes('tiem') || nm.includes('vaccine')) formTypeMap[sId] = 'tiem_chung';
+        // Fallback cho form id cố định nếu tên không rõ
+        else if (sId === '19') formTypeMap[sId] = 'noi_tru';
+        else if (sId === '20') formTypeMap[sId] = 'ngoai_tru';
+        else if (sId === '21') formTypeMap[sId] = 'tiem_chung';
+    });
+
+    // ── 2. Fetch feedbacks theo survey_key ─────────────────────────
     const rawFeedbacks = await db.Feedback.findAll({
-        where,
+        where: { type: 'evaluate', survey_key: surveyId },
         attributes: ['id', 'info', 'form_id', 'user_id', 'created_at', 'type', 'survey_key'],
         raw: true,
     });
 
-    // Fetch feedback options in parallel batches
+    // ── 3. Fetch feedback options (batch parallel) ─────────────────
     const feedbackIds = rawFeedbacks.map(f => f.id);
     const optionsByFb = {};
     if (feedbackIds.length > 0) {
-        const BATCH_SIZE = 500, CONCURRENCY = 8;
-        const allSectionRows = [];
-        for (let i = 0; i < feedbackIds.length; i += BATCH_SIZE * CONCURRENCY) {
-            const batchPromises = [];
-            for (let j = i; j < Math.min(i + BATCH_SIZE * CONCURRENCY, feedbackIds.length); j += BATCH_SIZE) {
-                const batch = feedbackIds.slice(j, j + BATCH_SIZE);
-                batchPromises.push(
+        const BATCH = 500, CONC = 8;
+        const allRows = [];
+        for (let i = 0; i < feedbackIds.length; i += BATCH * CONC) {
+            const promises = [];
+            for (let j = i; j < Math.min(i + BATCH * CONC, feedbackIds.length); j += BATCH) {
+                const batch = feedbackIds.slice(j, j + BATCH);
+                promises.push(
                     sequelize.query(
                         `SELECT fs."feedback_id", fo."data"
                          FROM "feedback_sections" fs
@@ -684,9 +710,9 @@ const getReportGSAT = async (query, userContext = {}) => {
                     )
                 );
             }
-            (await Promise.all(batchPromises)).forEach(r => allSectionRows.push(...r));
+            (await Promise.all(promises)).forEach(r => allRows.push(...r));
         }
-        allSectionRows.forEach(row => {
+        allRows.forEach(row => {
             if (!row.feedback_id) return;
             if (!optionsByFb[row.feedback_id]) optionsByFb[row.feedback_id] = [];
             let d = row.data;
@@ -695,34 +721,21 @@ const getReportGSAT = async (query, userContext = {}) => {
         });
     }
 
+    // Parse info + gắn options vào từng feedback
     rawFeedbacks.forEach(fb => {
-        const parsed = parseFeedbackRow(fb);
-        fb._parsed = parsed;
-        fb.info = parsed._info;
+        const parsed  = parseFeedbackRow(fb, formTypeMap);
+        fb._parsed    = parsed;
+        fb.info       = parsed._info;
         fb.optionsData = optionsByFb[fb.id] || [];
     });
 
-    // ── 2. Load facilities + form-type map ─────────────────────────
-    const allUnits = await db.SocialFacility.findAll();
-    const forms = await db.Form.findAll({ where: { type: 'evaluate' }, raw: true });
-    const formTypeMap = {};
-    forms.forEach(f => {
-        const sId = String(f.id);
-        if (sId === '19') { formTypeMap[sId] = 'noi_tru'; return; }
-        if (sId === '20') { formTypeMap[sId] = 'ngoai_tru'; return; }
-        if (sId === '21') { formTypeMap[sId] = 'tiem_chung'; return; }
-        const nm = (f.name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '');
-        if (nm.includes('noitru')) formTypeMap[sId] = 'noi_tru';
-        else if (nm.includes('tiem') || nm.includes('vaccine')) formTypeMap[sId] = 'tiem_chung';
-        else if (nm.includes('ngoaitru')) formTypeMap[sId] = 'ngoai_tru';
-    });
-
-    // ── 3. Group feedbacks → unitGroups ────────────────────────────
+    // ── 4. Group feedbacks → unitGroups ────────────────────────────
     const unitGroups = {};
     const unmapped = { noi_tru: { self: [], qr: [] }, ngoai_tru: { self: [], qr: [] }, tiem_chung: { self: [], qr: [] }, unknown: { self: [], qr: [] } };
 
     rawFeedbacks.forEach(fb => {
         const p = fb._parsed;
+        // surveyType đã được parseFeedbackRow tính theo formTypeMap thực tế
         const sType = p.surveyType !== 'unknown' ? p.surveyType : (formTypeMap[p.formId] || 'unknown');
         const target = p.isQR ? 'qr' : 'self';
         const unitId = p.facilityKey || (fb.facility_id ? String(fb.facility_id).trim() : null);
@@ -737,7 +750,7 @@ const getReportGSAT = async (query, userContext = {}) => {
         }
     });
 
-    // ── 4. Helpers ─────────────────────────────────────────────────
+    // ── 5. Helpers ─────────────────────────────────────────────────
     const calcRate = (arr) => {
         if (!arr || !arr.length) return 0;
         let totalW = 0, count = 0;
@@ -778,7 +791,7 @@ const getReportGSAT = async (query, userContext = {}) => {
         };
     };
 
-    // ── 5. Determine unit scope for sections ───────────────────────
+    // ── 6. Determine unit scope for sections ───────────────────────
     const pubHosp = allUnits.filter(u => u.type === 'BV' && u.category !== 'Cơ sở y tế tư nhân');
     const privHosp = allUnits.filter(u => u.type === 'BV' && u.category === 'Cơ sở y tế tư nhân');
     const tytList = allUnits.filter(u => u.type === 'TYT');
@@ -930,9 +943,12 @@ const getReportGSAT = async (query, userContext = {}) => {
         dataPhuLuc2:   buildAppendix(privHosp, 'noi_tru',    'ngoai_tru'),
         dataPhuLuc3:   buildAppendix(tytList,  'tiem_chung', 'ngoai_tru', true),
         meta: {
+            surveyId,
+            surveyName,
             isSingleUnit,
             userUnit: userUnit ? { id: userUnit.id, name: userUnit.name, type: userUnit.type, category: userUnit.category } : null,
             totalFeedbacks: rawFeedbacks.length,
+            formTypeMap, // để frontend debug nếu cần
         },
     };
 };

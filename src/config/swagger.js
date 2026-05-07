@@ -1157,9 +1157,7 @@ const options = {
           description: 'Trả về dữ liệu báo cáo đã được tính toán phía backend gồm 3 mục chính (ngoại trú, nội trú, tiêm chủng) và 3 phụ lục. Nếu người dùng được gán vào cơ sở y tế cụ thể (trường `unit`), mục 1/2/3 chỉ hiển thị dữ liệu của cơ sở đó.',
           security: [{ bearerAuth: [] }],
           parameters: [
-            { name: 'survey_key', in: 'query', schema: { type: 'string', default: '2' }, description: 'Survey key (mặc định: 2)' },
-            { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Từ ngày (YYYY-MM-DD)' },
-            { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Đến ngày (YYYY-MM-DD)' },
+            { name: 'survey_key', in: 'query', schema: { type: 'string' }, description: 'ID cuộc khảo sát (Survey.id). Nếu không truyền → lấy survey evaluate mới nhất đang active.' },
           ],
           responses: {
             200: {
@@ -1197,26 +1195,6 @@ const options = {
             401: { description: 'Chưa xác thực' },
             403: { description: 'Không có quyền truy cập' },
           },
-        },
-        post: {
-          tags: ['Reports'],
-          summary: 'Báo cáo Giám sát y tế (POST body)',
-          security: [{ bearerAuth: [] }],
-          requestBody: {
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    survey_key: { type: 'string', default: '2' },
-                    startDate: { type: 'string', format: 'date' },
-                    endDate: { type: 'string', format: 'date' },
-                  },
-                },
-              },
-            },
-          },
-          responses: { 200: { description: 'Thành công' } },
         },
       },
 
