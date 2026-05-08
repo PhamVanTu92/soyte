@@ -12,13 +12,22 @@ const { formatPermissions } = require('../utils/permissionUtils');
  */
 const isSuperAdmin = (user, permissionNames) => {
   if (user.role !== 'admin') return false;
-  // _directPermCount được set bởi auth.middleware sau khi fetch từ DB,
-  // TRƯỚC KHI merge role permissions. Dùng nó để phán định super admin:
-  //   admin + 0 direct user_permissions = super admin (full quyền)
-  //   admin + có direct user_permissions = chỉ được những quyền đó
-  // Role permissions (qua user_roles) KHÔNG ảnh hưởng đến trạng thái super admin.
-  if (user._directPermCount !== undefined) return user._directPermCount === 0;
-  // Fallback (login response, không qua verifyToken): dùng permissionNames hoặc user.permissions
+  // Super admin = role='admin' + KHÔNG có permission trực tiếp + KHÔNG có Role được gán
+  //
+  // Lý do kiểm tra assignedRoleCount:
+  //   Dữ liệu cũ (MSSQL migrate) có thể để users.role='admin' cho nhiều tài khoản.
+  //   Nếu tài khoản đó được gán một Role (vd: Bệnh viện) thì quyền đến từ Role đó,
+  //   không phải super admin.
+  //
+  // _directPermCount và _assignedRoleCount được set bởi auth.middleware
+  // TRƯỚC KHI merge, nên phản ánh đúng dữ liệu gốc trong DB.
+  if (user._directPermCount !== undefined && user._assignedRoleCount !== undefined) {
+    return user._directPermCount === 0 && user._assignedRoleCount === 0;
+  }
+  // Fallback khi không qua verifyToken (vd: context login, unit test):
+  // dùng assignedRoles nếu có, không thì dùng permissionNames
+  const assignedRoleCount = (user.assignedRoles || []).length;
+  if (assignedRoleCount > 0) return false;
   const names = permissionNames ?? (user.permissions || []).map(p => p.name);
   return names.length === 0;
 };

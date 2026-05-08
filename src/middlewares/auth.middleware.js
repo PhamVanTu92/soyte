@@ -59,9 +59,12 @@ const verifyToken = async (req, res, next) => {
         return apiResponse.unauthorized(res, 'Invalid token: User not found.');
     }
 
-    // Lưu số permission trực tiếp (user_permissions) trước khi merge từ roles.
-    // isSuperAdmin dựa vào số này để phán định: admin + 0 direct perms = super admin.
-    user._directPermCount = (user.permissions || []).length;
+    // Lưu số liệu TRƯỚC KHI merge để isSuperAdmin phán định đúng:
+    //   _directPermCount : số permission gán thẳng vào user (user_permissions)
+    //   _assignedRoleCount: số Role được gán qua user_roles
+    // Super admin = role='admin' + directPermCount=0 + assignedRoleCount=0
+    user._directPermCount   = (user.permissions    || []).length;
+    user._assignedRoleCount = (user.assignedRoles  || []).length;
 
     // Merge permissions: tất cả role permissions + individual user permissions (dedup by name)
     if (user.assignedRoles?.length) {
@@ -144,7 +147,8 @@ const optionalAuth = async (req, res, next) => {
     });
 
     if (user) {
-      user._directPermCount = (user.permissions || []).length;
+      user._directPermCount   = (user.permissions   || []).length;
+      user._assignedRoleCount = (user.assignedRoles || []).length;
 
       if (user.assignedRoles?.length) {
         const nameSet = new Set((user.permissions || []).map(p => p.name));

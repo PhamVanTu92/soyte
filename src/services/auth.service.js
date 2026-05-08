@@ -80,6 +80,19 @@ const loginUser = async (email, password) => {
         model: db.SocialFacility,
         as: 'facility',
         attributes: ['type']
+      },
+      {
+        model: db.Role,
+        as: 'assignedRoles',
+        attributes: ['id', 'name'],
+        required: false,
+        through: { attributes: [] },
+        include: [{
+          model: db.Permission,
+          as: 'permissions',
+          attributes: ['name'],
+          through: { attributes: [] }
+        }]
       }
     ]
   });
