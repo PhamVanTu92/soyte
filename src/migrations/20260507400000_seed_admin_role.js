@@ -43,6 +43,13 @@ const MISSING_PERMISSIONS = [
   ['trading_facility.create',  'Thêm cơ sở buôn bán',                      'trading_facility'],
   ['trading_facility.update',  'Cập nhật cơ sở buôn bán',                  'trading_facility'],
   ['trading_facility.delete',  'Xóa cơ sở buôn bán',                       'trading_facility'],
+
+  // Module banner
+  ['banner',                   'Module Quản lý Banner',                     null],
+  ['banner.view',              'Xem danh sách banner',                      'banner'],
+  ['banner.create',            'Tạo banner mới',                            'banner'],
+  ['banner.update',            'Cập nhật banner',                           'banner'],
+  ['banner.delete',            'Xóa banner',                                'banner'],
 ];
 
 // ── Helper: upsert permission, trả về id ──────────────────────────
