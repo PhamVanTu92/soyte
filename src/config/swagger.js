@@ -309,6 +309,34 @@ const options = {
             parent_id: { type: 'integer', nullable: true },
           },
         },
+
+        // ─── Banner ───────────────────────────────────────────────
+        Banner: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer', example: 1 },
+            position: { type: 'string', enum: ['top', 'left', 'right', 'footer'], example: 'top' },
+            image_url: { type: 'string', format: 'uri', example: 'https://backend.suckhoethudo.vn/uploads/images/banner.jpg' },
+            title: { type: 'string', nullable: true, example: 'Banner trang chủ' },
+            link_url: { type: 'string', nullable: true, example: '/tin-tuc' },
+            sort_order: { type: 'integer', default: 0, example: 0 },
+            is_active: { type: 'boolean', default: true, example: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        BannerInput: {
+          type: 'object',
+          required: ['position', 'image_url'],
+          properties: {
+            position: { type: 'string', enum: ['top', 'left', 'right', 'footer'], example: 'top' },
+            image_url: { type: 'string', format: 'uri', example: 'https://backend.suckhoethudo.vn/uploads/images/banner.jpg' },
+            title: { type: 'string', nullable: true, example: 'Banner trang chủ' },
+            link_url: { type: 'string', nullable: true, example: '/tin-tuc' },
+            sort_order: { type: 'integer', default: 0, example: 0 },
+            is_active: { type: 'boolean', default: true },
+          },
+        },
       },
     },
     tags: [
@@ -327,6 +355,7 @@ const options = {
       { name: 'Trading Facilities', description: 'Cơ sở bán buôn / bán lẻ thuốc' },
       { name: 'Roles', description: 'Quản lý Role & phân quyền theo role' },
       { name: 'Crawler', description: 'Cào dữ liệu lịch công tác' },
+      { name: 'Banners', description: 'Quản lý Banner (top / left / right / footer)' },
     ],
     paths: {
       // ══════════════════════════════════════════════════════════
@@ -1491,6 +1520,232 @@ const options = {
           responses: {
             200: { description: 'Xóa thành công' },
             404: { description: 'Không tìm thấy' },
+          },
+        },
+      },
+
+      // ══════════════════════════════════════════════════════════
+      //  BANNERS
+      // ══════════════════════════════════════════════════════════
+      '/api/banners': {
+        get: {
+          tags: ['Banners'],
+          summary: 'Lấy danh sách banner (public)',
+          description: 'Trả về tất cả banner, nhóm theo position. Có thể lọc theo position hoặc is_active.',
+          parameters: [
+            {
+              name: 'position',
+              in: 'query',
+              schema: { type: 'string', enum: ['top', 'left', 'right', 'footer'] },
+              description: 'Lọc theo vị trí banner',
+            },
+            {
+              name: 'is_active',
+              in: 'query',
+              schema: { type: 'boolean' },
+              description: 'Lọc theo trạng thái kích hoạt',
+            },
+          ],
+          responses: {
+            200: {
+              description: 'Thành công',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string' },
+                      data: { type: 'array', items: { $ref: '#/components/schemas/Banner' } },
+                      grouped: {
+                        type: 'object',
+                        properties: {
+                          top:    { type: 'array', items: { $ref: '#/components/schemas/Banner' } },
+                          left:   { type: 'array', items: { $ref: '#/components/schemas/Banner' } },
+                          right:  { type: 'array', items: { $ref: '#/components/schemas/Banner' } },
+                          footer: { type: 'array', items: { $ref: '#/components/schemas/Banner' } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        post: {
+          tags: ['Banners'],
+          summary: 'Tạo banner mới',
+          description: [
+            'Hỗ trợ 3 cách:',
+            '1. **Upload 1 ảnh**: `multipart/form-data` với field `file`',
+            '2. **Upload nhiều ảnh**: `multipart/form-data` với field `files[]` (tối đa 20 file, mỗi file ≤ 10MB)',
+            '3. **JSON**: `{ position, image_url, title?, link_url?, sort_order? }` hoặc `{ items: [...] }` để tạo nhiều cùng lúc',
+          ].join('\n\n'),
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'multipart/form-data': {
+                schema: {
+                  type: 'object',
+                  required: ['position'],
+                  properties: {
+                    file:       { type: 'string', format: 'binary', description: 'Upload 1 ảnh (field: file)' },
+                    files:      { type: 'array', items: { type: 'string', format: 'binary' }, description: 'Upload nhiều ảnh (field: files[]), tối đa 20 file' },
+                    position:   { type: 'string', enum: ['top', 'left', 'right', 'footer'] },
+                    title:      { type: 'string' },
+                    link_url:   { type: 'string' },
+                    sort_order: { type: 'integer', default: 0 },
+                    is_active:  { type: 'string', enum: ['true', 'false'], default: 'true' },
+                  },
+                },
+              },
+              'application/json': {
+                schema: {
+                  oneOf: [
+                    {
+                      title: 'Tạo 1 banner',
+                      allOf: [{ $ref: '#/components/schemas/BannerInput' }],
+                    },
+                    {
+                      title: 'Tạo nhiều banner',
+                      type: 'object',
+                      required: ['items'],
+                      properties: {
+                        items: { type: 'array', items: { $ref: '#/components/schemas/BannerInput' }, description: 'Danh sách banner cần tạo' },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          responses: {
+            201: {
+              description: 'Tạo thành công',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean' },
+                      message: { type: 'string', example: 'Tạo 2 banner thành công' },
+                      data: { type: 'array', items: { $ref: '#/components/schemas/Banner' } },
+                    },
+                  },
+                },
+              },
+            },
+            400: { description: 'Dữ liệu không hợp lệ (thiếu position hoặc image_url)' },
+            401: { description: 'Chưa xác thực' },
+            403: { description: 'Không có quyền' },
+          },
+        },
+      },
+      '/api/banners/reorder': {
+        patch: {
+          tags: ['Banners'],
+          summary: 'Sắp xếp lại thứ tự banner',
+          description: 'Cập nhật sort_order cho nhiều banner cùng lúc. Dùng để kéo thả sắp xếp.',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    required: ['id', 'sort_order'],
+                    properties: {
+                      id:         { type: 'integer', example: 1 },
+                      sort_order: { type: 'integer', example: 0 },
+                    },
+                  },
+                  example: [{ id: 1, sort_order: 0 }, { id: 3, sort_order: 1 }, { id: 2, sort_order: 2 }],
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: 'Sắp xếp thành công',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean' },
+                      data: { type: 'object', properties: { updated: { type: 'integer', example: 3 } } },
+                    },
+                  },
+                },
+              },
+            },
+            401: { description: 'Chưa xác thực' },
+          },
+        },
+      },
+      '/api/banners/{id}': {
+        get: {
+          tags: ['Banners'],
+          summary: 'Chi tiết banner (public)',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: {
+            200: { description: 'Thành công', content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/Banner' } } } } } },
+            404: { description: 'Không tìm thấy banner' },
+          },
+        },
+        put: {
+          tags: ['Banners'],
+          summary: 'Cập nhật banner',
+          description: 'Hỗ trợ `application/json` hoặc `multipart/form-data` (khi muốn đổi ảnh mới từ local).',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          requestBody: {
+            content: {
+              'multipart/form-data': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    file:       { type: 'string', format: 'binary', description: 'Ảnh mới (tuỳ chọn)' },
+                    position:   { type: 'string', enum: ['top', 'left', 'right', 'footer'] },
+                    title:      { type: 'string' },
+                    link_url:   { type: 'string' },
+                    sort_order: { type: 'integer' },
+                    is_active:  { type: 'string', enum: ['true', 'false'] },
+                  },
+                },
+              },
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    position:   { type: 'string', enum: ['top', 'left', 'right', 'footer'] },
+                    image_url:  { type: 'string', format: 'uri' },
+                    title:      { type: 'string' },
+                    link_url:   { type: 'string' },
+                    sort_order: { type: 'integer' },
+                    is_active:  { type: 'boolean' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Cập nhật thành công', content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/Banner' } } } } } },
+            404: { description: 'Không tìm thấy banner' },
+          },
+        },
+        delete: {
+          tags: ['Banners'],
+          summary: 'Xóa banner',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: {
+            200: { description: 'Xóa thành công' },
+            404: { description: 'Không tìm thấy banner' },
           },
         },
       },
