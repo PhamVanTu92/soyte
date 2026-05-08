@@ -57,8 +57,8 @@ app.use(cors({
     // Cho phép request không có origin (Postman, mobile app, server-to-server)
     if (!origin) return callback(null, true);
 
-    // Nếu không cấu hình ALLOWED_ORIGINS → cho phép tất cả (dev mode)
-    if (allowedOrigins.length === 0) return callback(null, true);
+    // Nếu không cấu hình ALLOWED_ORIGINS hoặc đặt là '*' → cho phép tất cả
+    if (allowedOrigins.length === 0 || allowedOrigins.includes('*')) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
