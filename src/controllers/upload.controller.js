@@ -1,4 +1,5 @@
 const ApiError = require('../utils/ApiError');
+const { buildUploadUrl } = require('../utils/urlHelper');
 
 const uploadImage = (req, res, next) => {
     try {
@@ -6,10 +7,10 @@ const uploadImage = (req, res, next) => {
             throw new ApiError(400, 'Please upload a file');
         }
 
-        // Construct the full URL
-        const protocol = 'https';
-        const host = req.get('host');
-        const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+        // Xác định sub-path (images/ hoặc documents/)
+        const subPath = req.file.destination.replace(/^uploads\/?/, '').replace(/\/?$/, '/');
+        const relativePath = `/uploads/${subPath}${req.file.filename}`;
+        const imageUrl = buildUploadUrl(relativePath);
 
         res.status(200).json({
             success: true,

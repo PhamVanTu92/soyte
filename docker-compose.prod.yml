@@ -35,6 +35,9 @@ services:
 
       ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
       FRONTEND_URL:    "${FRONTEND_URL}"
+      # Base URL công khai của backend — dùng để build URL ảnh upload
+      # Nếu frontend và backend cùng domain thì bằng FRONTEND_URL
+      APP_BASE_URL:    "${APP_BASE_URL}"
 
       EMAIL_HOST: "${EMAIL_HOST}"
       EMAIL_PORT: "${EMAIL_PORT:-587}"
