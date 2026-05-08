@@ -48,6 +48,8 @@ services:
       EXPORT_MAX_ROWS: "${EXPORT_MAX_ROWS:-1000}"
       STATS_MAX_FETCH: "${STATS_MAX_FETCH:-1000}"
 
+      SWAGGER_SERVER_URL: "${SWAGGER_SERVER_URL}"
+
     ports:
       - "0.0.0.0:${APP_PORT:-3001}:3000"
     volumes:
