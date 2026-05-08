@@ -925,12 +925,12 @@ const getEvaluateDashboard = async (query) => {
     raw: true,
   });
 
-  // ── Filter theo cơ sở nếu user không phải admin ──────────────────
+  // ── Filter theo đơn vị ───────────────────────────────────────────
+  // unit_filter = user.unit (social_facilities.id); null = xem tất cả
   let rawFeedbacks = allFeedbacks;
   if (unit_filter) {
     rawFeedbacks = allFeedbacks.filter(fb => {
       const unitInfo = getUnitFromInfo(fb.info);
-      // unitKey trong info phải khớp với unit_filter (social_facilities.id)
       return unitInfo && String(unitInfo.unitKey) === unit_filter;
     });
   }

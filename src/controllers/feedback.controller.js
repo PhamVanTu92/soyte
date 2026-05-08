@@ -91,19 +91,14 @@ const getEvaluateDashboard = async (req, res, next) => {
       if (parsed.length > 0) survey_keys = parsed;
     }
 
-    // ── Xác định phạm vi xem theo role ──────────────────────────────
-    // Admin (role=admin hoặc có quyền 'feedback' rộng) → xem tất cả
-    // Người dùng thuộc cơ sở (có unit) → chỉ xem data của cơ sở mình
-    let unit_filter = null;
-    const user = req.user;
-    if (user) {
-      const permNames = (user.permissions || []).map(p => p.name || p);
-      const isAdmin = user.role === 'admin';
-      const hasBroadPerm = permNames.includes('feedback'); // quyền cha → xem tất cả
-      if (!isAdmin && !hasBroadPerm && user.unit) {
-        unit_filter = String(user.unit);
-      }
-    }
+    // ── Lọc theo đơn vị của user ─────────────────────────────────────
+    // Quy tắc đơn giản, không phụ thuộc vào role:
+    //   user.unit rỗng / null  → xem tất cả (unit_filter = null)
+    //   user.unit có giá trị   → chỉ xem dữ liệu của đơn vị đó
+    const unitRaw = req.user?.unit;
+    const unit_filter = (unitRaw !== null && unitRaw !== undefined && String(unitRaw).trim() !== '')
+      ? String(unitRaw).trim()
+      : null;
 
     const result = await feedbackService.getEvaluateDashboard({ survey_keys, unit_filter });
     res.status(200).json({ success: true, message: 'Lấy dữ liệu dashboard giám sát chất lượng thành công', data: result });
