@@ -1,0 +1,60 @@
+version: '3.9'
+
+# ── UAT (User Acceptance Testing) compose ────────────────────────
+# Chạy song song với Production trên cùng server, cổng khác nhau.
+# Container, volume, image đều dùng tên riêng (hậu tố -uat).
+#
+# Dùng:
+#   docker-compose -f docker-compose.uat.yml up -d --build
+#
+# File env:
+#   cp .env.uat.example .env.uat
+#   # Chỉnh sửa .env.uat cho phù hợp
+#   docker-compose -f docker-compose.uat.yml --env-file .env.uat up -d --build
+# ─────────────────────────────────────────────────────────────────
+
+services:
+  backend-uat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: soyte-backend:uat
+    container_name: soyte-backend-uat
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      NODE_ENV: uat
+
+      DB_HOST:     "${DB_HOST:-host.docker.internal}"
+      DB_PORT:     "${DB_PORT:-35432}"
+      DB_NAME:     "${DB_NAME:-suckhuoethudo_uat_db}"
+      DB_USER:     "${DB_USER:-postgres}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_DIALECT:  postgres
+      DB_SSL:      "${DB_SSL:-false}"
+
+      JWT_SECRET:     "${JWT_SECRET}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-1d}"
+
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
+      FRONTEND_URL:    "${FRONTEND_URL}"
+      APP_BASE_URL:    "${APP_BASE_URL}"
+
+      EMAIL_HOST: "${EMAIL_HOST}"
+      EMAIL_PORT: "${EMAIL_PORT:-587}"
+      EMAIL_USER: "${EMAIL_USER}"
+      EMAIL_PASS: "${EMAIL_PASS}"
+
+      EXPORT_MAX_ROWS: "${EXPORT_MAX_ROWS:-1000}"
+      STATS_MAX_FETCH: "${STATS_MAX_FETCH:-1000}"
+
+    ports:
+      - "127.0.0.1:${APP_PORT:-3001}:3000"
+    volumes:
+      - uploads_uat_data:/app/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  uploads_uat_data:
+    driver: local
