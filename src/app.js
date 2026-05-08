@@ -92,7 +92,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Serve static files from the 'uploads' directory
-app.use('/uploads', express.static('uploads'));
+// Header CORP cho phép frontend (khác subdomain) load ảnh/file
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static('uploads'));
 
 // Khởi tạo Cron Job khi server bắt đầu
 initCronJobs();
