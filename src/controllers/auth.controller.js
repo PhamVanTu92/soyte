@@ -139,8 +139,11 @@ const getMe = async (req, res, next) => {
     }));
 
     user.permission_list = permissionNames;
-    const isFullAdmin = req.user.role === 'admin' && permissionNames.length === 0;
-    console.log('[getMe] role:', req.user.role, '| permCount:', permissionNames.length, '| isFullAdmin:', isFullAdmin);
+    // Dùng _directPermCount (set bởi auth.middleware trước khi merge role perms)
+    // để xác định super admin đúng — giống logic trong isSuperAdmin
+    const directCount = req.user._directPermCount ?? permissionNames.length;
+    const isFullAdmin = req.user.role === 'admin' && directCount === 0;
+    console.log('[getMe] role:', req.user.role, '| directPermCount:', directCount, '| isFullAdmin:', isFullAdmin);
     user.permissions = formatPermissions(permissionNames, isFullAdmin);
     user.unit_type = user.type || (req.user.facility ? req.user.facility.type : null);
 

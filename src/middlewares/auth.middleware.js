@@ -55,8 +55,16 @@ const verifyToken = async (req, res, next) => {
         ]
     });
 
+    if (!user) {
+        return apiResponse.unauthorized(res, 'Invalid token: User not found.');
+    }
+
+    // Lưu số permission trực tiếp (user_permissions) trước khi merge từ roles.
+    // isSuperAdmin dựa vào số này để phán định: admin + 0 direct perms = super admin.
+    user._directPermCount = (user.permissions || []).length;
+
     // Merge permissions: tất cả role permissions + individual user permissions (dedup by name)
-    if (user && user.assignedRoles?.length) {
+    if (user.assignedRoles?.length) {
       const nameSet = new Set((user.permissions || []).map(p => p.name));
       const extraPerms = [];
       for (const role of user.assignedRoles) {
@@ -68,10 +76,6 @@ const verifyToken = async (req, res, next) => {
         }
       }
       user.permissions = [...(user.permissions || []), ...extraPerms];
-    }
-
-    if (!user) {
-        return apiResponse.unauthorized(res, 'Invalid token: User not found.');
     }
 
     if (user.password_changed_at) {
@@ -139,18 +143,22 @@ const optionalAuth = async (req, res, next) => {
       ]
     });
 
-    if (user && user.assignedRoles?.length) {
-      const nameSet = new Set((user.permissions || []).map(p => p.name));
-      const extraPerms = [];
-      for (const role of user.assignedRoles) {
-        for (const perm of (role.permissions || [])) {
-          if (!nameSet.has(perm.name)) {
-            nameSet.add(perm.name);
-            extraPerms.push(perm);
+    if (user) {
+      user._directPermCount = (user.permissions || []).length;
+
+      if (user.assignedRoles?.length) {
+        const nameSet = new Set((user.permissions || []).map(p => p.name));
+        const extraPerms = [];
+        for (const role of user.assignedRoles) {
+          for (const perm of (role.permissions || [])) {
+            if (!nameSet.has(perm.name)) {
+              nameSet.add(perm.name);
+              extraPerms.push(perm);
+            }
           }
         }
+        user.permissions = [...(user.permissions || []), ...extraPerms];
       }
-      user.permissions = [...(user.permissions || []), ...extraPerms];
     }
 
     if (user) {

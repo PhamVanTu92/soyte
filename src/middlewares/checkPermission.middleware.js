@@ -12,7 +12,13 @@ const { formatPermissions } = require('../utils/permissionUtils');
  */
 const isSuperAdmin = (user, permissionNames) => {
   if (user.role !== 'admin') return false;
-  // Nếu permissionNames được truyền vào, dùng nó; không thì lấy từ user
+  // _directPermCount được set bởi auth.middleware sau khi fetch từ DB,
+  // TRƯỚC KHI merge role permissions. Dùng nó để phán định super admin:
+  //   admin + 0 direct user_permissions = super admin (full quyền)
+  //   admin + có direct user_permissions = chỉ được những quyền đó
+  // Role permissions (qua user_roles) KHÔNG ảnh hưởng đến trạng thái super admin.
+  if (user._directPermCount !== undefined) return user._directPermCount === 0;
+  // Fallback (login response, không qua verifyToken): dùng permissionNames hoặc user.permissions
   const names = permissionNames ?? (user.permissions || []).map(p => p.name);
   return names.length === 0;
 };
