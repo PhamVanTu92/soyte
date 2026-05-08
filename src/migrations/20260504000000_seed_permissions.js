@@ -111,6 +111,12 @@ const permissionTree = {
       },
     },
   },
+  banner: {
+    view:   'Xem danh sách banner',
+    create: 'Tạo banner mới',
+    update: 'Cập nhật banner',
+    delete: 'Xóa banner',
+  },
 };
 
 // Helper: upsert một permission, trả về id
