@@ -2,6 +2,8 @@
 
 const service = require('../services/tradingFacility.service');
 
+// ── Trading Facilities ───────────────────────────────────────────
+
 const list = async (req, res, next) => {
   try {
     const result = await service.getTradingFacilities(req.query);
@@ -44,4 +46,34 @@ const stats = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { list, detail, create, update, remove, stats };
+// ── Options (facility_type / trading_type) ───────────────────────
+
+const listOptions = async (req, res, next) => {
+  try {
+    const data = await service.getOptions(req.query);
+    res.json({ success: true, message: 'Lấy danh sách loại hình thành công', ...data });
+  } catch (err) { next(err); }
+};
+
+const createOption = async (req, res, next) => {
+  try {
+    const data = await service.createOption(req.body);
+    res.status(201).json({ success: true, message: 'Thêm loại hình thành công', data });
+  } catch (err) { next(err); }
+};
+
+const updateOption = async (req, res, next) => {
+  try {
+    const data = await service.updateOption(req.params.optionId, req.body);
+    res.json({ success: true, message: 'Cập nhật loại hình thành công', data });
+  } catch (err) { next(err); }
+};
+
+const deleteOption = async (req, res, next) => {
+  try {
+    const data = await service.deleteOption(req.params.optionId);
+    res.json({ success: true, message: 'Xóa loại hình thành công', data });
+  } catch (err) { next(err); }
+};
+
+module.exports = { list, detail, create, update, remove, stats, listOptions, createOption, updateOption, deleteOption };

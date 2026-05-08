@@ -14,22 +14,23 @@ const getTradingFacilities = async (query) => {
 
   const where = {};
 
+  // Exact match — giá trị đến từ lookup table nên không cần tìm mờ
   if (trading_type) where.trading_type = trading_type;
-  if (facility_type) where.facility_type = { [Op.iLike]: `%${facility_type}%` };
+  if (facility_type) where.facility_type = facility_type;
   if (is_active !== undefined) where.is_active = is_active === 'true' || is_active === true;
 
   if (search) {
     where[Op.or] = [
-      { name:                { [Op.iLike]: `%${search}%` } },
-      { certificate_number:  { [Op.iLike]: `%${search}%` } },
-      { person_in_charge:    { [Op.iLike]: `%${search}%` } },
-      { address:             { [Op.iLike]: `%${search}%` } },
-      { gps_number:          { [Op.iLike]: `%${search}%` } },
+      { name:               { [Op.iLike]: `%${search}%` } },
+      { certificate_number: { [Op.iLike]: `%${search}%` } },
+      { person_in_charge:   { [Op.iLike]: `%${search}%` } },
+      { address:            { [Op.iLike]: `%${search}%` } },
+      { gps_number:         { [Op.iLike]: `%${search}%` } },
     ];
   }
 
   const offset = (parseInt(page) - 1) * parseInt(limit);
-  const validSortBy = ['id','name','trading_type','facility_type','issue_date','created_at'];
+  const validSortBy = ['id', 'name', 'trading_type', 'facility_type', 'issue_date', 'created_at'];
   const orderCol = validSortBy.includes(sort_by) ? sort_by : 'id';
   const orderDir = sort_order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
@@ -67,9 +68,11 @@ const createTradingFacility = async (data) => {
   } = data;
 
   if (!name) throw new ApiError(400, 'Tên cơ sở là bắt buộc');
-  if (!trading_type || !['wholesale', 'retail'].includes(trading_type)) {
-    throw new ApiError(400, 'trading_type phải là "wholesale" hoặc "retail"');
-  }
+  if (!trading_type) throw new ApiError(400, 'trading_type là bắt buộc');
+
+  // Kiểm tra trading_type hợp lệ (có trong lookup)
+  await validateOptionValue('trading_type', trading_type);
+  if (facility_type) await validateOptionValue('facility_type', facility_type);
 
   return db.TradingFacility.create({
     certificate_number, name, person_in_charge, practice_certificate,
@@ -94,9 +97,8 @@ const updateTradingFacility = async (id, data) => {
     if (data[field] !== undefined) updates[field] = data[field];
   }
 
-  if (updates.trading_type && !['wholesale', 'retail'].includes(updates.trading_type)) {
-    throw new ApiError(400, 'trading_type phải là "wholesale" hoặc "retail"');
-  }
+  if (updates.trading_type) await validateOptionValue('trading_type', updates.trading_type);
+  if (updates.facility_type) await validateOptionValue('facility_type', updates.facility_type);
 
   await facility.update(updates);
   return facility;
@@ -112,21 +114,115 @@ const deleteTradingFacility = async (id) => {
 
 // ── Thống kê nhanh ───────────────────────────────────────────────
 const getTradingFacilityStats = async () => {
-  const [total, wholesale, retail, active] = await Promise.all([
+  const [total, active] = await Promise.all([
     db.TradingFacility.count(),
-    db.TradingFacility.count({ where: { trading_type: 'wholesale' } }),
-    db.TradingFacility.count({ where: { trading_type: 'retail' } }),
     db.TradingFacility.count({ where: { is_active: true } }),
   ]);
 
-  const byType = await db.TradingFacility.findAll({
+  const byTradingType = await db.TradingFacility.findAll({
+    attributes: ['trading_type', [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'count']],
+    group: ['trading_type'],
+    order: [[db.sequelize.literal('count'), 'DESC']],
+    raw: true,
+  });
+
+  const byFacilityType = await db.TradingFacility.findAll({
     attributes: ['facility_type', [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'count']],
     group: ['facility_type'],
     order: [[db.sequelize.literal('count'), 'DESC']],
     raw: true,
   });
 
-  return { total, wholesale, retail, active, inactive: total - active, byType };
+  return { total, active, inactive: total - active, byTradingType, byFacilityType };
+};
+
+// ════════════════════════════════════════════════════════════════
+// CRUD cho Options (facility_type / trading_type)
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Lấy toàn bộ options, nhóm theo kind
+ * ?kind=facility_type  → chỉ lấy 1 loại
+ */
+const getOptions = async (query = {}) => {
+  const where = {};
+  if (query.kind) where.kind = query.kind;
+
+  const rows = await db.TradingFacilityOption.findAll({
+    where,
+    order: [['kind', 'ASC'], ['label', 'ASC']],
+  });
+
+  // Nhóm theo kind để FE dùng dễ hơn
+  const grouped = {};
+  for (const row of rows) {
+    if (!grouped[row.kind]) grouped[row.kind] = [];
+    grouped[row.kind].push(row);
+  }
+
+  return { data: rows, grouped };
+};
+
+/**
+ * Thêm option mới
+ * body: { kind, value, label }
+ */
+const createOption = async (body) => {
+  const { kind, value, label } = body;
+  if (!kind || !value || !label) throw new ApiError(400, 'kind, value, label là bắt buộc');
+  if (!['facility_type', 'trading_type'].includes(kind)) {
+    throw new ApiError(400, 'kind phải là "facility_type" hoặc "trading_type"');
+  }
+
+  const existing = await db.TradingFacilityOption.findOne({ where: { kind, value } });
+  if (existing) throw new ApiError(409, `Giá trị "${value}" đã tồn tại trong ${kind}`);
+
+  return db.TradingFacilityOption.create({ kind, value, label });
+};
+
+/**
+ * Sửa option
+ * body: { label } — chỉ cho sửa label, không cho sửa value (vì dữ liệu cũ dùng value)
+ */
+const updateOption = async (id, body) => {
+  const option = await db.TradingFacilityOption.findByPk(id);
+  if (!option) throw new ApiError(404, 'Không tìm thấy option');
+
+  const updates = {};
+  if (body.label !== undefined) updates.label = body.label;
+  // Cho phép sửa value nếu không có facility nào đang dùng
+  if (body.value !== undefined && body.value !== option.value) {
+    const inUse = await db.TradingFacility.count({ where: { [option.kind]: option.value } });
+    if (inUse > 0) {
+      throw new ApiError(409, `Không thể đổi value: có ${inUse} cơ sở đang dùng giá trị này`);
+    }
+    updates.value = body.value;
+  }
+
+  await option.update(updates);
+  return option;
+};
+
+/**
+ * Xóa option — chỉ được xóa nếu chưa có cơ sở nào dùng
+ */
+const deleteOption = async (id) => {
+  const option = await db.TradingFacilityOption.findByPk(id);
+  if (!option) throw new ApiError(404, 'Không tìm thấy option');
+
+  const inUse = await db.TradingFacility.count({ where: { [option.kind]: option.value } });
+  if (inUse > 0) {
+    throw new ApiError(409, `Không thể xóa: có ${inUse} cơ sở đang dùng loại hình này`);
+  }
+
+  await option.destroy();
+  return { id: parseInt(id) };
+};
+
+// ── Helper: kiểm tra value có trong lookup không ────────────────
+const validateOptionValue = async (kind, value) => {
+  const opt = await db.TradingFacilityOption.findOne({ where: { kind, value } });
+  if (!opt) throw new ApiError(400, `Giá trị "${value}" không hợp lệ cho ${kind}. Vui lòng chọn từ danh sách.`);
 };
 
 module.exports = {
@@ -136,4 +232,8 @@ module.exports = {
   updateTradingFacility,
   deleteTradingFacility,
   getTradingFacilityStats,
+  getOptions,
+  createOption,
+  updateOption,
+  deleteOption,
 };

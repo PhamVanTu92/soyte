@@ -20,6 +20,7 @@ const modelsToLoad = [
   'Survey',
   'AffiliatedFacility',
   'TradingFacility',
+  'TradingFacilityOption',
   'Role',
 ];
 
