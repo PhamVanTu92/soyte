@@ -21,6 +21,7 @@ const modelsToLoad = [
   'AffiliatedFacility',
   'TradingFacility',
   'TradingFacilityOption',
+  'Banner',
   'Role',
 ];
 
