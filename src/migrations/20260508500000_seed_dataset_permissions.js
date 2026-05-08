@@ -36,7 +36,8 @@ module.exports = {
     // Parent: dataset
     const datasetId = await upsertPermission(sequelize, transaction, 'dataset', 'Module Quản lý Dataset động', null);
 
-    await upsertPermission(sequelize, transaction, 'dataset.manage', 'Quản lý datasets & records', datasetId);
+    await upsertPermission(sequelize, transaction, 'dataset.view',   'Xem danh sách dataset',       datasetId);
+    await upsertPermission(sequelize, transaction, 'dataset.manage', 'Quản lý datasets & records',  datasetId);
 
     // Assign to Admin role
     if (isPG(sequelize)) {
