@@ -36,7 +36,7 @@ services:
       JWT_SECRET:     "${JWT_SECRET}"
       JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-1d}"
 
-      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
+      ALLOWED_ORIGINS: "*"
       FRONTEND_URL:    "${FRONTEND_URL}"
       APP_BASE_URL:    "${APP_BASE_URL}"
 
