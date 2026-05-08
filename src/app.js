@@ -22,6 +22,7 @@ const reportRoutes = require('./routes/report.route');
 const tradingFacilityRoutes = require('./routes/tradingFacility.route');
 const roleRoutes = require('./routes/role.route');
 const bannerRoutes = require('./routes/banner.route');
+const datasetRoutes = require('./routes/dataset.route');
 const { initCronJobs } = require('./cron/scheduler');
 const errorHandler = require('./middlewares/error.middleware');
 
@@ -131,6 +132,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/trading-facilities', tradingFacilityRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/banners', bannerRoutes);
+app.use('/api/datasets', datasetRoutes);
 
 app.use(errorHandler);
 

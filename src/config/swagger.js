@@ -337,6 +337,50 @@ const options = {
             is_active: { type: 'boolean', default: true },
           },
         },
+
+        // ─── Dataset ──────────────────────────────────────────────
+        DatasetType: {
+          type: 'object',
+          properties: {
+            id:            { type: 'integer', example: 1 },
+            code:          { type: 'string', example: 'danh_muc_benh' },
+            name:          { type: 'string', example: 'Danh mục bệnh' },
+            description:   { type: 'string', nullable: true },
+            fields:        { type: 'array', nullable: true, items: { $ref: '#/components/schemas/FieldDef' } },
+            source_file:   { type: 'string', nullable: true, example: 'danh_muc_benh.xlsx' },
+            total_records: { type: 'integer', example: 1234 },
+            created_at:    { type: 'string', format: 'date-time' },
+            updated_at:    { type: 'string', format: 'date-time' },
+          },
+        },
+        DatasetTypeInput: {
+          type: 'object',
+          required: ['code', 'name'],
+          properties: {
+            code:        { type: 'string', example: 'danh_muc_benh', description: 'Mã định danh duy nhất (slug)' },
+            name:        { type: 'string', example: 'Danh mục bệnh' },
+            description: { type: 'string' },
+            fields:      { type: 'array', items: { $ref: '#/components/schemas/FieldDef' } },
+          },
+        },
+        FieldDef: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name:     { type: 'string', example: 'ten_benh' },
+            datatype: { type: 'string', enum: ['text', 'number', 'date', 'enum'], default: 'text' },
+            values:   { type: 'array', items: { type: 'string' }, description: 'Chỉ dùng khi datatype=enum' },
+          },
+        },
+        DatasetRecord: {
+          type: 'object',
+          properties: {
+            id:         { type: 'integer', example: 1 },
+            data:       { type: 'object', example: { ten_benh: 'Viêm phổi', ma_icd: 'J18' } },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
       },
     },
     tags: [
@@ -356,6 +400,7 @@ const options = {
       { name: 'Roles', description: 'Quản lý Role & phân quyền theo role' },
       { name: 'Crawler', description: 'Cào dữ liệu lịch công tác' },
       { name: 'Banners', description: 'Quản lý Banner (top / left / right / footer)' },
+      { name: 'Datasets', description: 'Registry dữ liệu động (schema-less JSONB)' },
     ],
     paths: {
       // ══════════════════════════════════════════════════════════
@@ -1747,6 +1792,227 @@ const options = {
             200: { description: 'Xóa thành công' },
             404: { description: 'Không tìm thấy banner' },
           },
+        },
+      },
+
+      // ══════════════════════════════════════════════════════════
+      //  DATASETS
+      // ══════════════════════════════════════════════════════════
+      '/api/datasets': {
+        get: {
+          tags: ['Datasets'],
+          summary: 'Lấy danh sách tất cả datasets',
+          security: [{ bearerAuth: [] }],
+          responses: { 200: { description: 'Thành công', content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, data: { type: 'array', items: { $ref: '#/components/schemas/DatasetType' } } } } } } } },
+        },
+        post: {
+          tags: ['Datasets'],
+          summary: 'Tạo dataset mới',
+          security: [{ bearerAuth: [] }],
+          requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/DatasetTypeInput' } } } },
+          responses: {
+            201: { description: 'Tạo thành công' },
+            409: { description: 'code đã tồn tại' },
+          },
+        },
+      },
+      '/api/datasets/stats': {
+        get: {
+          tags: ['Datasets'],
+          summary: 'Thống kê toàn hệ thống dataset',
+          security: [{ bearerAuth: [] }],
+          responses: { 200: { description: 'Thành công' } },
+        },
+      },
+      '/api/datasets/{code}': {
+        get: {
+          tags: ['Datasets'],
+          summary: 'Lấy thông tin một dataset',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Thành công', content: { 'application/json': { schema: { $ref: '#/components/schemas/DatasetType' } } } }, 404: { description: 'Không tìm thấy' } },
+        },
+        put: {
+          tags: ['Datasets'],
+          summary: 'Cập nhật thông tin dataset',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+          requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/DatasetTypeInput' } } } },
+          responses: { 200: { description: 'Cập nhật thành công' } },
+        },
+        delete: {
+          tags: ['Datasets'],
+          summary: 'Xóa dataset (và toàn bộ records)',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 204: { description: 'Đã xóa' } },
+        },
+      },
+      '/api/datasets/{code}/records': {
+        get: {
+          tags: ['Datasets'],
+          summary: 'Lấy danh sách bản ghi (có phân trang, lọc, tìm kiếm)',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'code',     in: 'path',  required: true, schema: { type: 'string' } },
+            { name: 'page',     in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit',    in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'search',   in: 'query', schema: { type: 'string' }, description: 'Full-text search trên toàn bộ data JSONB' },
+            { name: 'sort_by',  in: 'query', schema: { type: 'string', enum: ['id', 'created_at', 'updated_at'], default: 'id' } },
+            { name: 'sort_dir', in: 'query', schema: { type: 'string', enum: ['ASC', 'DESC'], default: 'ASC' } },
+            { name: 'filter',   in: 'query', schema: { type: 'string' }, description: 'JSON string: {"field":{"gte":1,"lte":10}} hoặc {"field":"value"}' },
+          ],
+          responses: { 200: { description: 'Thành công' } },
+        },
+        post: {
+          tags: ['Datasets'],
+          summary: 'Tạo một bản ghi mới',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { data: { type: 'object' } }, description: 'Truyền trực tiếp object hoặc wrap trong { data: {...} }' } } } },
+          responses: { 201: { description: 'Tạo thành công' } },
+        },
+        delete: {
+          tags: ['Datasets'],
+          summary: 'Xóa toàn bộ bản ghi của dataset (truncate)',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Đã xóa' } },
+        },
+      },
+      '/api/datasets/{code}/records/{id}': {
+        get: {
+          tags: ['Datasets'],
+          summary: 'Lấy một bản ghi theo ID',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'code', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'id',   in: 'path', required: true, schema: { type: 'integer' } },
+          ],
+          responses: { 200: { description: 'Thành công' }, 404: { description: 'Không tìm thấy' } },
+        },
+        put: {
+          tags: ['Datasets'],
+          summary: 'Thay thế toàn bộ data của bản ghi',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'code', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'id',   in: 'path', required: true, schema: { type: 'integer' } },
+          ],
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } },
+          responses: { 200: { description: 'Cập nhật thành công' } },
+        },
+        patch: {
+          tags: ['Datasets'],
+          summary: 'Merge (patch) một số field vào bản ghi',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'code', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'id',   in: 'path', required: true, schema: { type: 'integer' } },
+          ],
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } },
+          responses: { 200: { description: 'Patch thành công' } },
+        },
+        delete: {
+          tags: ['Datasets'],
+          summary: 'Xóa một bản ghi',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'code', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'id',   in: 'path', required: true, schema: { type: 'integer' } },
+          ],
+          responses: { 204: { description: 'Đã xóa' } },
+        },
+      },
+      '/api/datasets/{code}/fields': {
+        get: {
+          tags: ['Datasets'],
+          summary: 'Lấy field definitions của dataset',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Thành công' } },
+        },
+        put: {
+          tags: ['Datasets'],
+          summary: 'Cập nhật / merge field definitions',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/FieldDef' } } } } },
+          responses: { 200: { description: 'Thành công' } },
+        },
+      },
+      '/api/datasets/{code}/fields/detect': {
+        post: {
+          tags: ['Datasets'],
+          summary: 'Tự động phát hiện kiểu dữ liệu từ records hiện có',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Detect thành công' } },
+        },
+      },
+      '/api/datasets/{code}/fields/{field}/values': {
+        get: {
+          tags: ['Datasets'],
+          summary: 'Lấy các giá trị distinct của một field (dùng cho dropdown)',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'code',   in: 'path',  required: true, schema: { type: 'string' } },
+            { name: 'field',  in: 'path',  required: true, schema: { type: 'string' } },
+            { name: 'limit',  in: 'query', schema: { type: 'integer', default: 100 } },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+          ],
+          responses: { 200: { description: 'Thành công' } },
+        },
+      },
+      '/api/datasets/{code}/import': {
+        post: {
+          tags: ['Datasets'],
+          summary: 'Import dữ liệu từ file Excel (.xlsx/.xls)',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'code',        in: 'path',  required: true, schema: { type: 'string' } },
+            { name: 'sheet_index', in: 'query', schema: { type: 'integer', default: 0 }, description: 'Index sheet (0-based)' },
+            { name: 'truncate',    in: 'query', schema: { type: 'boolean', default: false }, description: 'Xóa dữ liệu cũ trước khi import' },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'multipart/form-data': {
+                schema: {
+                  type: 'object',
+                  required: ['file'],
+                  properties: {
+                    file: { type: 'string', format: 'binary', description: 'File Excel (.xls/.xlsx)' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Import thành công', content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, data: { type: 'object', properties: { dataset: { type: 'string' }, inserted: { type: 'integer' }, truncated: { type: 'boolean' } } } } } } } },
+            400: { description: 'Thiếu file hoặc file không hợp lệ' },
+          },
+        },
+      },
+      '/api/datasets/{code}/export': {
+        get: {
+          tags: ['Datasets'],
+          summary: 'Xuất dữ liệu ra file Excel',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: {
+            200: { description: 'File Excel', content: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: { type: 'string', format: 'binary' } } } },
+            404: { description: 'Không có dữ liệu' },
+          },
+        },
+      },
+      '/api/datasets/{code}/stats': {
+        get: {
+          tags: ['Datasets'],
+          summary: 'Thống kê phân phối dữ liệu theo từng field enum',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: { 200: { description: 'Thành công' } },
         },
       },
 

@@ -23,6 +23,8 @@ const modelsToLoad = [
   'TradingFacilityOption',
   'Banner',
   'Role',
+  'DatasetType',
+  'DatasetRecord',
 ];
 
 for (const modelName of modelsToLoad) {
