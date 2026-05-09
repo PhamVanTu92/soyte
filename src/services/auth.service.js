@@ -116,17 +116,18 @@ const loginUser = async (email, password) => {
  * @returns {Promise<User|null>}
  */
 const validateResetToken = async (token) => {
+  // Tìm theo token trước (không quan tâm hết hạn chưa)
   const user = await db.User.findOne({
-    where: {
-      reset_password_token: token,
-      reset_password_expires: {
-        [Op.gt]: new Date(),
-      },
-    },
+    where: { reset_password_token: token },
   });
 
   if (!user) {
-    throw new ApiError(400, 'Token không hợp lệ hoặc đã hết hạn.');
+    // Token không tồn tại → đã dùng rồi (bị null sau confirmPassword) hoặc sai
+    throw new ApiError(400, 'Link xác nhận đã được sử dụng hoặc không hợp lệ.');
+  }
+
+  if (user.reset_password_expires && user.reset_password_expires < new Date()) {
+    throw new ApiError(400, 'Link xác nhận đã hết hạn (24h). Vui lòng yêu cầu gửi lại email.');
   }
 
   return user;

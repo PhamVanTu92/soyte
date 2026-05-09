@@ -182,12 +182,8 @@ const checkToken = async (req, res, next) => {
     const user = await authService.validateResetToken(token);
 
     if (!user) {
-      throw new ApiError(400, 'Token không hợp lệ hoặc đã hết hạn.');
+      throw new ApiError(400, 'Link xác nhận không hợp lệ.');
     }
-
-    // if (user.is_verified) {
-    //   throw new ApiError(409, 'Tài khoản đã được xác thực.');
-    // }
 
     res.status(200).json({
       status: 200,
