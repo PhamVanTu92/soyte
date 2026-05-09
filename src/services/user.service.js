@@ -86,19 +86,21 @@ const formatUser = (user) => {
 
 // ── Danh sách users ──────────────────────────────────────────────
 const getUsers = async (queryOptions) => {
-  const { q, page = 1, limit = 10, role, unit, excludeId, role_id } = queryOptions;
+  const { q, page = 1, limit = 10, role, unit, excludeId, role_id, is_verified } = queryOptions;
 
   const where = {};
   if (q) {
     where[Op.or] = [
       { full_name: { [Op.iLike]: `%${q}%` } },
       { email:     { [Op.iLike]: `%${q}%` } },
+      { username:  { [Op.iLike]: `%${q}%` } },
     ];
   }
   if (role) where.role = role;
   if (unit) where.unit = unit;
   if (excludeId) where.id = { [Op.ne]: excludeId };
   if (role_id !== undefined) where.role_id = role_id === 'null' ? null : role_id;
+  if (is_verified !== undefined) where.is_verified = is_verified === 'true' || is_verified === true;
 
   const offset = (page - 1) * limit;
 

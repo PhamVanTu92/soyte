@@ -66,7 +66,7 @@ const assignUser = async (req, res, next) => {
     }
 
     const data = await service.assignRoleToUser(user_id, ids);
-    const hasRoles = Array.isArray(data.role_ids) && data.role_ids.length > 0;
+    const hasRoles = Array.isArray(data.assigned_roles) && data.assigned_roles.length > 0;
     res.json({ success: true, message: hasRoles ? 'Gán role thành công' : 'Hủy gán role thành công', data });
   } catch (err) { next(err); }
 };
