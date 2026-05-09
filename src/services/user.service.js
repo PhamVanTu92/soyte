@@ -108,7 +108,7 @@ const getUsers = async (queryOptions) => {
   if (is_verified !== undefined) where.is_verified = is_verified === 'true' || is_verified === true;
 
   const offset = (page - 1) * limit;
-  const sortCol = SAFE_SORT_COLS[sort_by] || 'updated_at';
+  const sortCol = SAFE_SORT_COLS[sort_by] || 'created_at';
   const sortDir = sort_dir?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
   const result = await db.User.findAndCountAll({
