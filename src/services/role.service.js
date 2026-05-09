@@ -3,6 +3,7 @@
 const { Op } = require('sequelize');
 const db = require('../models');
 const ApiError = require('../utils/ApiError');
+const userService = require('./user.service');
 
 // ── Danh sách roles ──────────────────────────────────────────────
 const getRoles = async (query = {}) => {
@@ -126,7 +127,7 @@ const assignRoleToUser = async (userId, roleIds) => {
     // Hủy toàn bộ roles
     await user.setAssignedRoles([]);
     await user.update({ role_id: null });
-    return { user_id: userId, role_ids: [], roles: [] };
+    return userService.getUserById(userId);
   }
 
   const roles = await db.Role.findAll({ where: { id: { [Op.in]: ids } } });
@@ -140,11 +141,7 @@ const assignRoleToUser = async (userId, roleIds) => {
   // Đồng bộ legacy role_id = role đầu tiên được gán
   await user.update({ role_id: ids[0] });
 
-  return {
-    user_id: userId,
-    role_ids: ids,
-    roles: roles.map(r => ({ id: r.id, name: r.name })),
-  };
+  return userService.getUserById(userId);
 };
 
 // ── Permissions hiệu lực của user (tất cả roles + cá nhân) ──────

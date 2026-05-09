@@ -91,8 +91,8 @@ const getUsers = async (queryOptions) => {
   const where = {};
   if (q) {
     where[Op.or] = [
-      { full_name: { [Op.like]: `%${q}%` } },
-      { email: { [Op.like]: `%${q}%` } },
+      { full_name: { [Op.iLike]: `%${q}%` } },
+      { email:     { [Op.iLike]: `%${q}%` } },
     ];
   }
   if (role) where.role = role;
