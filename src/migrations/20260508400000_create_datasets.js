@@ -35,19 +35,30 @@ module.exports = {
       )
     `, { transaction });
 
-    // ── Indexes ───────────────────────────────────────────────────
-    await sequelize.query(
-      `CREATE INDEX IF NOT EXISTS idx_dataset_records_gin  ON "dataset_records" USING GIN ("data")`,
-      { transaction }
-    );
-    await sequelize.query(
-      `CREATE INDEX IF NOT EXISTS idx_dataset_records_type ON "dataset_records" ("dataset_type_id")`,
-      { transaction }
-    );
-    await sequelize.query(
-      `CREATE INDEX IF NOT EXISTS idx_dataset_records_type_created ON "dataset_records" ("dataset_type_id", "created_at" DESC)`,
-      { transaction }
-    );
+    // ── Indexes (dùng DO...EXCEPTION để idempotent hoàn toàn) ─────
+    await sequelize.query(`
+      DO $$ BEGIN
+        CREATE INDEX idx_dataset_records_gin
+          ON "dataset_records" USING GIN ("data");
+      EXCEPTION WHEN duplicate_table THEN NULL;
+      END $$
+    `, { transaction });
+
+    await sequelize.query(`
+      DO $$ BEGIN
+        CREATE INDEX idx_dataset_records_type
+          ON "dataset_records" ("dataset_type_id");
+      EXCEPTION WHEN duplicate_table THEN NULL;
+      END $$
+    `, { transaction });
+
+    await sequelize.query(`
+      DO $$ BEGIN
+        CREATE INDEX idx_dataset_records_type_created
+          ON "dataset_records" ("dataset_type_id", "created_at" DESC);
+      EXCEPTION WHEN duplicate_table THEN NULL;
+      END $$
+    `, { transaction });
 
     // ── Trigger updated_at ────────────────────────────────────────
     await sequelize.query(`
@@ -59,14 +70,19 @@ module.exports = {
 
     await sequelize.query(`
       DO $$ BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_dataset_types_upd') THEN
-          CREATE TRIGGER trg_dataset_types_upd BEFORE UPDATE ON "dataset_types"
-            FOR EACH ROW EXECUTE FUNCTION fn_dataset_updated_at();
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_dataset_records_upd') THEN
-          CREATE TRIGGER trg_dataset_records_upd BEFORE UPDATE ON "dataset_records"
-            FOR EACH ROW EXECUTE FUNCTION fn_dataset_updated_at();
-        END IF;
+        CREATE TRIGGER trg_dataset_types_upd
+          BEFORE UPDATE ON "dataset_types"
+          FOR EACH ROW EXECUTE FUNCTION fn_dataset_updated_at();
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `, { transaction });
+
+    await sequelize.query(`
+      DO $$ BEGIN
+        CREATE TRIGGER trg_dataset_records_upd
+          BEFORE UPDATE ON "dataset_records"
+          FOR EACH ROW EXECUTE FUNCTION fn_dataset_updated_at();
+      EXCEPTION WHEN duplicate_object THEN NULL;
       END $$
     `, { transaction });
 
