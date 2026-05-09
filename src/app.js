@@ -28,6 +28,9 @@ const errorHandler = require('./middlewares/error.middleware');
 
 const app = express();
 
+// Tắt ETag để tránh browser cache trả 304 Not Modified cho API
+app.set('etag', false);
+
 // Tin tưởng reverse proxy (Nginx) — cần thiết để req.ip, req.protocol đúng
 app.set('trust proxy', 1);
 
@@ -103,10 +106,13 @@ app.use('/uploads', (req, res, next) => {
 // Khởi tạo Cron Job khi server bắt đầu
 initCronJobs();
 
-// Set Content-Type header for all API responses
+// Set Content-Type + tắt cache cho tất cả API responses
 app.use('/api', (req, res, next) => {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    next();
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
 });
 
 // API Routes
