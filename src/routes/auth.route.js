@@ -29,7 +29,11 @@ const registerRules = [
 
 // Validation rules for login
 const loginRules = [
-  body('email').isEmail().withMessage('Vui lòng cung cấp địa chỉ email hợp lệ'),
+  body().custom((value, { req }) => {
+    const id = req.body.email || req.body.userName || req.body.username;
+    if (!id || !id.trim()) throw new Error('Vui lòng cung cấp email hoặc tên đăng nhập');
+    return true;
+  }),
   body('password').notEmpty().withMessage('Mật khẩu là bắt buộc'),
 ];
 

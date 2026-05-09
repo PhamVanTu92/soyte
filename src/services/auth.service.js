@@ -68,7 +68,10 @@ const registerUser = async (userData) => {
  */
 const loginUser = async (email, password) => {
   const user = await db.User.findOne({
-    where: { email },
+    where: db.sequelize.where(
+      db.sequelize.fn('LOWER', db.sequelize.col('email')),
+      email.toLowerCase()
+    ),
     include: [
       {
         model: db.Permission,

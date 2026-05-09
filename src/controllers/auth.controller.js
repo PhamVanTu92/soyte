@@ -96,7 +96,9 @@ const login = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty())
       throw new ApiError(400, 'Validation error', errors.array());
-    const { email, password } = req.body;
+    // Chấp nhận cả "email" lẫn "userName" (legacy client)
+    const { password } = req.body;
+    const email = (req.body.email || req.body.userName || req.body.username || '').trim().toLowerCase();
     const user = await authService.loginUser(email, password);
     if (!user)
       throw new ApiError(401, 'Invalid email or password');
