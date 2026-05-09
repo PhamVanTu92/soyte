@@ -85,8 +85,13 @@ const formatUser = (user) => {
 };
 
 // ── Danh sách users ──────────────────────────────────────────────
+const SAFE_SORT_COLS = {
+  id: 'id', created_at: 'created_at', updated_at: 'updated_at',
+  full_name: 'full_name', email: 'email', status: 'status',
+};
+
 const getUsers = async (queryOptions) => {
-  const { q, page = 1, limit = 10, role, unit, excludeId, role_id, is_verified } = queryOptions;
+  const { q, page = 1, limit = 10, role, unit, excludeId, role_id, is_verified, sort_by, sort_dir } = queryOptions;
 
   const where = {};
   if (q) {
@@ -103,6 +108,8 @@ const getUsers = async (queryOptions) => {
   if (is_verified !== undefined) where.is_verified = is_verified === 'true' || is_verified === true;
 
   const offset = (page - 1) * limit;
+  const sortCol = SAFE_SORT_COLS[sort_by] || 'updated_at';
+  const sortDir = sort_dir?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
   const result = await db.User.findAndCountAll({
     where,
@@ -111,7 +118,7 @@ const getUsers = async (queryOptions) => {
     offset: parseInt(offset, 10),
     attributes: USER_ATTRS,
     include: USER_INCLUDE,
-    order: [['created_at', 'DESC']],
+    order: [[sortCol, sortDir]],
   });
 
   result.rows = result.rows.map(formatUser);
