@@ -30,17 +30,17 @@ const excelUpload = multer({
 const DS_PERM = ['dataset', 'dataset.manage'];
 
 // ── Dataset Types ─────────────────────────────────────────────────
-// GET    /api/datasets
-router.get('/',          auth, checkPermission(DS_PERM), ctrl.listDatasets);
+// GET    /api/datasets  — public
+router.get('/',          ctrl.listDatasets);
 
 // POST   /api/datasets
 router.post('/',         auth, checkPermission(DS_PERM), ctrl.createDataset);
 
-// GET    /api/datasets/stats  (trước /:code để không bị match nhầm)
-router.get('/stats',     auth, checkPermission(DS_PERM), ctrl.getSystemStats);
+// GET    /api/datasets/stats  (trước /:code để không bị match nhầm) — public
+router.get('/stats',     ctrl.getSystemStats);
 
-// GET    /api/datasets/:code
-router.get('/:code',     auth, checkPermission(DS_PERM), ctrl.getDataset);
+// GET    /api/datasets/:code  — public
+router.get('/:code',     ctrl.getDataset);
 
 // PUT    /api/datasets/:code
 router.put('/:code',     auth, checkPermission(DS_PERM), ctrl.updateDataset);
@@ -49,8 +49,8 @@ router.put('/:code',     auth, checkPermission(DS_PERM), ctrl.updateDataset);
 router.delete('/:code',  auth, checkPermission(DS_PERM), ctrl.deleteDataset);
 
 // ── Records ───────────────────────────────────────────────────────
-// GET    /api/datasets/:code/records
-router.get('/:code/records',          auth, checkPermission(DS_PERM), ctrl.listRecords);
+// GET    /api/datasets/:code/records  — public
+router.get('/:code/records',          ctrl.listRecords);
 
 // POST   /api/datasets/:code/records
 router.post('/:code/records',         auth, checkPermission(DS_PERM), ctrl.createRecord);
@@ -58,8 +58,8 @@ router.post('/:code/records',         auth, checkPermission(DS_PERM), ctrl.creat
 // DELETE /api/datasets/:code/records  (truncate)
 router.delete('/:code/records',       auth, checkPermission(DS_PERM), ctrl.truncateRecords);
 
-// GET    /api/datasets/:code/records/:id
-router.get('/:code/records/:id',      auth, checkPermission(DS_PERM), ctrl.getRecord);
+// GET    /api/datasets/:code/records/:id  — public
+router.get('/:code/records/:id',      ctrl.getRecord);
 
 // PUT    /api/datasets/:code/records/:id
 router.put('/:code/records/:id',      auth, checkPermission(DS_PERM), ctrl.updateRecord);
@@ -71,8 +71,8 @@ router.patch('/:code/records/:id',    auth, checkPermission(DS_PERM), ctrl.patch
 router.delete('/:code/records/:id',   auth, checkPermission(DS_PERM), ctrl.deleteRecord);
 
 // ── Fields ────────────────────────────────────────────────────────
-// GET    /api/datasets/:code/fields
-router.get('/:code/fields',                    auth, checkPermission(DS_PERM), ctrl.getFields);
+// GET    /api/datasets/:code/fields  — public
+router.get('/:code/fields',                    ctrl.getFields);
 
 // PUT    /api/datasets/:code/fields
 router.put('/:code/fields',                    auth, checkPermission(DS_PERM), ctrl.updateFields);
@@ -80,8 +80,8 @@ router.put('/:code/fields',                    auth, checkPermission(DS_PERM), c
 // POST   /api/datasets/:code/fields/detect
 router.post('/:code/fields/detect',            auth, checkPermission(DS_PERM), ctrl.detectFields);
 
-// GET    /api/datasets/:code/fields/:field/values
-router.get('/:code/fields/:field/values',      auth, checkPermission(DS_PERM), ctrl.getFieldValues);
+// GET    /api/datasets/:code/fields/:field/values  — public
+router.get('/:code/fields/:field/values',      ctrl.getFieldValues);
 
 // ── Import / Export ───────────────────────────────────────────────
 // POST   /api/datasets/:code/import  (multipart/form-data, field: "file")
