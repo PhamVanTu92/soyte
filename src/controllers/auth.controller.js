@@ -40,13 +40,7 @@ const register = async (req, res, next) => {
 
     let finalUsername = username || us;
     if (!finalUsername && email) {
-      const base = email.split('@')[0];
-      // Nếu username bị trùng thì thêm số vào sau (base1, base2, ...)
-      finalUsername = base;
-      let suffix = 1;
-      while (await db.User.findOne({ where: { username: finalUsername } })) {
-        finalUsername = `${base}${suffix++}`;
-      }
+      finalUsername = email.split('@')[0];
     }
 
     const user = await authService.registerUser({

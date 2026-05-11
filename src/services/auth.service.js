@@ -10,22 +10,10 @@ const { Op } = require('sequelize');
 const registerUser = async (userData) => {
   // Check if email or username is already taken
   const { email, username, permissions } = userData;
-  const existingUser = await db.User.findOne({
-    where: {
-      [db.Sequelize.Op.or]: [
-        { email },
-        ...(username ? [{ username }] : [])
-      ]
-    }
-  });
-
+  // Chỉ check trùng email — username không dùng để đăng nhập nên không cần unique
+  const existingUser = await db.User.findOne({ where: { email } });
   if (existingUser) {
-    if (existingUser.email === email) {
-      throw new ApiError(409, 'Email đã được sử dụng');
-    }
-    if (username && existingUser.username === username) {
-      throw new ApiError(409, 'Tên đăng nhập đã được sử dụng');
-    }
+    throw new ApiError(409, 'Email đã được sử dụng');
   }
 
   const user = await db.User.create(userData);
