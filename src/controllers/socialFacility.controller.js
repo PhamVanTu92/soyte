@@ -86,10 +86,15 @@ const getAll = async (req, res, next) => {
       plain.coords = [plain.latitude, plain.longitude];
       return plain;
     });
+    const reports = await SocialFacility.count({
+      where: { status: 'active' }, // Có thể thêm điều kiện lọc nếu cần
+      group: ['type', 'category']
+    });
     return success(res, data, 'Success', 200, {
       total: count,
       page,
       pageSize,
+      reports,
       totalPages: Math.ceil(count / pageSize)
     });
 
