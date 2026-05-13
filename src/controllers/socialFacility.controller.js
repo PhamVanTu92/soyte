@@ -48,71 +48,51 @@ const create = async (req, res, next) => {
 const getAll = async (req, res, next) => {
   try {
     const { type, name } = req.query;
-
+  
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 20;
     const offset = (page - 1) * pageSize;
     const limit = pageSize;
-
+  
     const where = {};
+  
     if (type) {
-        const typeArray = Array.isArray(type) ? type : type.split(',').map(t => t.trim());
-        where.type = { [Op.in]: typeArray };
+      const typeArray = Array.isArray(type)
+        ? type
+        : type.split(',').map(t => t.trim());
+      where.type = { [Op.in]: typeArray };
     }
+  
     if (name) {
-        where.name = { [Op.like]: `%${name}%` };
+      // Escape LIKE wildcards from user input
+      const escaped = name.replace(/[%_\\]/g, '\\$&');
+      where.name = { [Op.like]: `%${escaped}%` };
     }
-
-    // Chạy song song 2 câu lệnh để tối ưu tốc độ
-    const [result, reportsRaw] = await Promise.all([
-        SocialFacility.findAndCountAll({
-            where,
-            offset,
-            limit,
-            order: [['createdAt', 'DESC']], // Nên có order khi phân trang
-            distinct: true // Tránh đếm sai nếu sau này có include
-        }),
-        SocialFacility.findAll({ // Dùng findAll + attributes cho group by rõ ràng hơn
-            attributes: [
-                'type', 
-                'category', 
-                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
-            ],
-            where: { status: 'active' }, 
-            group: ['type', 'category'],
-            raw: true
-        })
+  
+    // Run both queries in parallel
+    const [{ count, rows }, reports] = await Promise.all([
+      SocialFacility.findAndCountAll({ where, offset, limit }),
+      SocialFacility.count({
+        where: { status: 'active' },
+        group: ['type', 'category'],
+      }),
     ]);
-
-    const { count, rows } = result;
-
-    // Format lại dữ liệu rows
+  
     const data = rows.map(f => {
-        const plain = f.get({ plain: true });
-        plain.coords = [plain.latitude, plain.longitude];
-        return plain;
+      const plain = f.get({ plain: true });
+      plain.coords = [plain.latitude, plain.longitude];
+      return plain;
     });
-
-    // Format lại reports thành Object lồng nhau (tùy chọn)
-    const formattedReports = {};
-    reportsRaw.forEach(item => {
-        if (!formattedReports[item.type]) formattedReports[item.type] = {};
-        formattedReports[item.type][item.category] = parseInt(item.count, 10);
+  
+    return success(res, { items: data, reports }, 'Success', 200, {
+      total: count,
+      page,
+      pageSize,
+      totalPages: Math.ceil(count / pageSize),
     });
-
-    return success(res, { 
-        data, 
-        reports: formattedReports
-    }, 'Success', 200, {
-        total: count,
-        page,
-        pageSize,
-        totalPages: Math.ceil(count / pageSize)
-    });
-
-} catch (err) {
+  } catch (err) {
     next(err);
-}
+  }
 };
 
 // Get facility by ID
