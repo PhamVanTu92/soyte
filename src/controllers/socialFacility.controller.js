@@ -83,7 +83,7 @@ const getAll = async (req, res, next) => {
       return plain;
     });
   
-    return success(res, { items: data, reports }, 'Success', 200, {
+    return success(res, data, reports , 'Success', 200, {
       total: count,
       page,
       pageSize,
