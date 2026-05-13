@@ -73,7 +73,6 @@ const getAll = async (req, res, next) => {
     const [{ count, rows }, reports] = await Promise.all([
       SocialFacility.findAndCountAll({ where, offset, limit }),
       SocialFacility.count({
-        where: { status: 'active' },
         group: ['type', 'category'],
       }),
     ]);
