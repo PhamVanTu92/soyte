@@ -5,38 +5,34 @@ const { Op } = require('sequelize');
 
 exports.getAll = async (req, res, next) => {
     try {
-        const page = parseInt(req.query.page, 10) || 1;
-        const pageSize = parseInt(req.query.pageSize, 10) || 20;
-
-        const offset = (page - 1) * pageSize;
-        const limit = pageSize;
-
-        const where = {};
-        if (q && q.trim() !== '') {
-            where.name = {
-                [Op.like]: `%${q}%`
-            };
-        }
-
-        const { count, data } = await AffiliatedFacility.findAndCountAll({
-            where,
-            limit: parseInt(limit, 10),
-            offset: parseInt(offset, 10),
-            order: [['created_at', 'DESC']]
-        });
-
-        const totalPages = Math.ceil(count / parseInt(limit, 10));
-
-        return success(res, data, 'Success', 200, {
-            total: count,
-            page,
-            pageSize,
-            totalPages: Math.ceil(count / pageSize)
-          });
+      const { q } = req.query;
+      const page = parseInt(req.query.page, 10) || 1;
+      const pageSize = parseInt(req.query.pageSize, 10) || 20;
+      const offset = (page - 1) * pageSize;
+      const limit = pageSize;
+  
+      const where = {};
+      if (q && q.trim() !== '') {
+        where.name = { [Op.like]: `%${q}%` };
+      }
+  
+      const { count, rows } = await AffiliatedFacility.findAndCountAll({
+        where,
+        limit,
+        offset,
+        order: [['created_at', 'DESC']]
+      });
+  
+      return success(res, rows, 'Success', 200, {
+        total: count,
+        page,
+        pageSize,
+        totalPages: Math.ceil(count / pageSize)
+      });
     } catch (error) {
-        next(error);
+      next(error);
     }
-};
+  };
 
 exports.getById = async (req, res, next) => {
     try {
