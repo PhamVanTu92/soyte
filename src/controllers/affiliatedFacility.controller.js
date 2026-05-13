@@ -5,8 +5,11 @@ const { Op } = require('sequelize');
 
 exports.getAll = async (req, res, next) => {
     try {
-        const { page = 1, limit = 10, q } = req.query;
-        const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+        const page = parseInt(req.query.page, 10) || 1;
+        const pageSize = parseInt(req.query.pageSize, 10) || 20;
+
+        const offset = (page - 1) * pageSize;
+        const limit = pageSize;
 
         const where = {};
         if (q && q.trim() !== '') {
