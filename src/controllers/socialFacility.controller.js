@@ -87,7 +87,7 @@ const getAll = async (req, res, next) => {
       return plain;
     });
     const reports = await SocialFacility.count({
-      group: ['type', 'category']
+      group: ['type']
     });
     return success(res, data, 'Success', 200, {
       total: count,
