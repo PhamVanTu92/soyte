@@ -59,6 +59,10 @@ const hasNestedPermission = (tree, permissionPath) => {
     } else if (i === parts.length - 1 && typeof current[part] === 'boolean') {
       return current[part] === true;
     } else {
+      // Nếu node con là true (quyền 2-part = full access cho cả sub-module)
+      // thì bất kỳ path con 3-part nào cũng được phép
+      if (current[part] === true) return true;
+
       if (!current.children || !current.children[part]) return false;
       current = current.children[part];
     }
