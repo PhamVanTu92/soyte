@@ -48,47 +48,51 @@ const create = async (req, res, next) => {
 const getAll = async (req, res, next) => {
   try {
     const { type, name } = req.query;
-  
+
+    // Pagination
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 20;
+
     const offset = (page - 1) * pageSize;
     const limit = pageSize;
-  
+
     const where = {};
-  
+
     if (type) {
       const typeArray = Array.isArray(type)
         ? type
         : type.split(',').map(t => t.trim());
-      where.type = { [Op.in]: typeArray };
+
+      where.type = {
+        [Op.in]: typeArray
+      };
     }
-  
+
     if (name) {
-      // Escape LIKE wildcards from user input
-      const escaped = name.replace(/[%_\\]/g, '\\$&');
-      where.name = { [Op.like]: `%${escaped}%` };
+      where.name = {
+        [Op.like]: `%${name}%`
+      };
     }
-  
-    // Run both queries in parallel
-    const [{ count, rows }, reports] = await Promise.all([
-      SocialFacility.findAndCountAll({ where, offset, limit }),
-      SocialFacility.count({
-        group: ['type', 'category'],
-      }),
-    ]);
-  
+
+    const { count, rows } = await SocialFacility.findAndCountAll({
+      where,
+      offset,
+      limit
+    });
+
+    // Transform data back to including coords array for FE consistency
     const data = rows.map(f => {
       const plain = f.get({ plain: true });
       plain.coords = [plain.latitude, plain.longitude];
       return plain;
     });
-  
-    return success(res, data, reports , 'Success', 200, {
+    return success(res, data, 'Success', 200, {
       total: count,
       page,
       pageSize,
-      totalPages: Math.ceil(count / pageSize),
+      totalPages: Math.ceil(count / pageSize)
     });
+
   } catch (err) {
     next(err);
   }
