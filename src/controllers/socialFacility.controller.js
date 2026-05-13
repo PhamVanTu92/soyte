@@ -49,54 +49,70 @@ const getAll = async (req, res, next) => {
   try {
     const { type, name } = req.query;
 
-    // Pagination
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || 20;
-
     const offset = (page - 1) * pageSize;
     const limit = pageSize;
 
     const where = {};
-
     if (type) {
-      const typeArray = Array.isArray(type)
-        ? type
-        : type.split(',').map(t => t.trim());
-
-      where.type = {
-        [Op.in]: typeArray
-      };
+        const typeArray = Array.isArray(type) ? type : type.split(',').map(t => t.trim());
+        where.type = { [Op.in]: typeArray };
     }
-
     if (name) {
-      where.name = {
-        [Op.like]: `%${name}%`
-      };
+        where.name = { [Op.like]: `%${name}%` };
     }
 
-    const { count, rows } = await SocialFacility.findAndCountAll({
-      where,
-      offset,
-      limit
-    });
+    // Chạy song song 2 câu lệnh để tối ưu tốc độ
+    const [result, reportsRaw] = await Promise.all([
+        SocialFacility.findAndCountAll({
+            where,
+            offset,
+            limit,
+            order: [['createdAt', 'DESC']], // Nên có order khi phân trang
+            distinct: true // Tránh đếm sai nếu sau này có include
+        }),
+        SocialFacility.findAll({ // Dùng findAll + attributes cho group by rõ ràng hơn
+            attributes: [
+                'type', 
+                'category', 
+                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+            ],
+            where: { status: 'active' }, 
+            group: ['type', 'category'],
+            raw: true
+        })
+    ]);
 
-    // Transform data back to including coords array for FE consistency
+    const { count, rows } = result;
+
+    // Format lại dữ liệu rows
     const data = rows.map(f => {
-      const plain = f.get({ plain: true });
-      plain.coords = [plain.latitude, plain.longitude];
-      return plain;
+        const plain = f.get({ plain: true });
+        plain.coords = [plain.latitude, plain.longitude];
+        return plain;
     });
 
-    return success(res, data, 'Success', 200, {
-      total: count,
-      page,
-      pageSize,
-      totalPages: Math.ceil(count / pageSize)
+    // Format lại reports thành Object lồng nhau (tùy chọn)
+    const formattedReports = {};
+    reportsRaw.forEach(item => {
+        if (!formattedReports[item.type]) formattedReports[item.type] = {};
+        formattedReports[item.type][item.category] = parseInt(item.count, 10);
     });
 
-  } catch (err) {
+    return success(res, { 
+        data, 
+        reports: formattedReports
+    }, 'Success', 200, {
+        total: count,
+        page,
+        pageSize,
+        totalPages: Math.ceil(count / pageSize)
+    });
+
+} catch (err) {
     next(err);
-  }
+}
 };
 
 // Get facility by ID
