@@ -63,7 +63,8 @@ const hasNestedPermission = (tree, permissionPath) => {
       current = current.children[part];
     }
 
-    if (typeof current === 'object' && current.view !== true) {
+    // Bỏ qua kiểm tra view ở root level (i=0) — root chỉ là namespace/category
+    if (i > 0 && typeof current === 'object' && current.view !== true) {
       return false;
     }
   }
