@@ -18,7 +18,7 @@ exports.getAll = async (req, res, next) => {
             };
         }
 
-        const { count, rows } = await AffiliatedFacility.findAndCountAll({
+        const { count, data } = await AffiliatedFacility.findAndCountAll({
             where,
             limit: parseInt(limit, 10),
             offset: parseInt(offset, 10),
@@ -27,12 +27,12 @@ exports.getAll = async (req, res, next) => {
 
         const totalPages = Math.ceil(count / parseInt(limit, 10));
 
-        return success(res, rows, 'Lấy danh sách cơ sở y tế thành công', 200, {
+        return success(res, data, 'Success', 200, {
             total: count,
-            page: parseInt(page, 10),
-            limit: parseInt(limit, 10),
-            totalPages
-        });
+            page,
+            pageSize,
+            totalPages: Math.ceil(count / pageSize)
+          });
     } catch (error) {
         next(error);
     }
