@@ -91,14 +91,14 @@ const SAFE_SORT_COLS = {
 };
 
 const getUsers = async (queryOptions) => {
-  const { q, page = 1, limit = 10, role, unit, excludeId, role_id, is_verified, sort_by, sort_dir } = queryOptions;
+  const { search, page = 1, limit = 10, role, unit, excludeId, role_id, is_verified, sort_by, sort_dir } = queryOptions;
 
   const where = {};
   if (q) {
     where[Op.or] = [
-      { full_name: { [Op.iLike]: `%${q}%` } },
-      { email:     { [Op.iLike]: `%${q}%` } },
-      { username:  { [Op.iLike]: `%${q}%` } },
+      { full_name: { [Op.iLike]: `%${search}%` } },
+      { email:     { [Op.iLike]: `%${search}%` } },
+      { username:  { [Op.iLike]: `%${search}%` } },
     ];
   }
   if (role) where.role = role;
