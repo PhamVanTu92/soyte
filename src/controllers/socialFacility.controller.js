@@ -47,7 +47,7 @@ const create = async (req, res, next) => {
 // Get all facilities
 const getAll = async (req, res, next) => {
   try {
-    const { type, name } = req.query;
+    const { type, search } = req.query;
 
     // Pagination
     const page = parseInt(req.query.page, 10) || 1;
@@ -68,9 +68,9 @@ const getAll = async (req, res, next) => {
       };
     }
 
-    if (name) {
+    if (search) {
       where.name = {
-        [Op.iLike]: `%${name}%`
+        [Op.iLike]: `%${search}%`
       };
     }
 
