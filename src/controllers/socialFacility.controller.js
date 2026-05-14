@@ -70,7 +70,7 @@ const getAll = async (req, res, next) => {
 
     if (name) {
       where.name = {
-        [Op.like]: `%${name}%`
+        [Op.iLike]: `%${name}%`
       };
     }
 
