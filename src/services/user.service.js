@@ -94,7 +94,7 @@ const getUsers = async (queryOptions) => {
   const { search, page = 1, limit = 10, role, unit, excludeId, role_id, is_verified, sort_by, sort_dir } = queryOptions;
 
   const where = {};
-  if (q) {
+  if (search) {
     where[Op.or] = [
       { full_name: { [Op.iLike]: `%${search}%` } },
       { email:     { [Op.iLike]: `%${search}%` } },
