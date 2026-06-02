@@ -1,332 +1,467 @@
 import AdminLayout from "../components/AdminLayout";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import { Navigate, useParams } from "react-router-dom";
+import { Toast } from "@/components/prime";
+import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
-import { Button } from "primereact/button";
 import { InputSwitch } from "primereact/inputswitch";
-import { Calendar } from "primereact/calendar";
-import { Toast } from "@/components/prime";
-import { Navigate, useParams } from "react-router-dom";
-import { useTemplateForm } from "../hooks/useTemplateForm";
-import { InfoBuilder } from "../components/templates/InfoBuilder";
-import { ReflectBuilder } from "../components/templates/ReflectBuilder";
-import { EvaluateBuilder } from "../components/templates/EvaluateBuilder";
-import { ConfirmDialog } from 'primereact/confirmdialog';
+import { Dropdown } from "primereact/dropdown";
+import {
+  useFormBuilder, LIKERT_OPTIONS, QuestionType,
+  FSection, FQuestion,
+} from "../hooks/useFormBuilder";
+import {
+  ChevronDown, ChevronRight, Trash2, Plus, ArrowUp,
+  ArrowDown, GripVertical, Copy, Eye, EyeOff,
+} from "lucide-react";
+
 const ALLOWED_TYPES = ["evaluate", "reflect"] as const;
-type FormType = (typeof ALLOWED_TYPES)[number];
+
+const Q_TYPES: { value: QuestionType; label: string }[] = [
+  { value: "likert",   label: "Likert (thang 0–5)" },
+  { value: "single",   label: "Single (1 lựa chọn)" },
+  { value: "multi",    label: "Multi (nhiều lựa chọn)" },
+  { value: "text",     label: "Text (văn bản ngắn)" },
+  { value: "textarea", label: "Textarea (văn bản dài)" },
+  { value: "number",   label: "Number (số)" },
+  { value: "date",     label: "Date (ngày tháng)" },
+];
+
+const Q_TYPE_COLOR: Record<QuestionType, string> = {
+  likert:   "bg-primary-50 text-primary-700 border-primary-200",
+  single:   "bg-sky-50 text-sky-700 border-sky-200",
+  multi:    "bg-violet-50 text-violet-700 border-violet-200",
+  text:     "bg-slate-50 text-slate-600 border-slate-200",
+  textarea: "bg-slate-50 text-slate-600 border-slate-200",
+  number:   "bg-amber-50 text-amber-700 border-amber-200",
+  date:     "bg-green-50 text-green-700 border-green-200",
+};
+
+/* ── Question preview ────────────────────────────────────────────── */
+const QuestionPreview: React.FC<{ q: FQuestion }> = ({ q }) => {
+  if (q.type === "likert") return (
+    <div className="flex flex-wrap gap-1 mt-2">
+      {q.options.map(o => (
+        <div key={o.id} className={`flex-1 min-w-[48px] text-center p-1.5 border rounded text-[10px] leading-tight
+          ${o.option_key === "0" ? "border-slate-200 bg-slate-50 text-slate-400" : "border-primary-100 bg-primary-50 text-primary-600"}`}>
+          <div className="font-bold text-sm">{o.option_key}</div>
+          <div className="truncate">{o.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+  if (q.type === "single" || q.type === "multi") return (
+    <div className="flex flex-col gap-1 mt-2">
+      {q.options.map(o => (
+        <div key={o.id} className="flex items-center gap-2 text-xs text-slate-500">
+          <span className={`w-3.5 h-3.5 border border-slate-300 rounded-${q.type === "single" ? "full" : "sm"} flex-shrink-0`}/>
+          {o.label || <em className="opacity-40">Tùy chọn</em>}
+        </div>
+      ))}
+    </div>
+  );
+  const placeholders: Partial<Record<QuestionType, string>> = {
+    text: "Nhập văn bản...", textarea: "Nhập nội dung...",
+    number: "0", date: "dd/mm/yyyy",
+  };
+  return (
+    <div className="mt-2 h-8 rounded border border-slate-200 bg-slate-50 px-3 flex items-center text-xs text-slate-400">
+      {placeholders[q.type] ?? ""}
+    </div>
+  );
+};
+
+/* ── Question block ─────────────────────────────────────────────── */
+const QuestionBlock: React.FC<{
+  sec: FSection; q: FQuestion; qi: number; qTotal: number;
+  onUpdate: (f: keyof FQuestion, v: any) => void;
+  onRemove: () => void;
+  onMove: (d: -1|1) => void;
+  onAddOpt: () => void;
+  onUpdateOpt: (oid: string, f: "label"|"option_key", v: string) => void;
+  onRemoveOpt: (oid: string) => void;
+}> = ({ q, qi, qTotal, onUpdate, onRemove, onMove, onAddOpt, onUpdateOpt, onRemoveOpt }) => {
+  const [open, setOpen] = useState(true);
+  const hasOpts = q.type === "single" || q.type === "multi";
+  const isLikert = q.type === "likert";
+
+  return (
+    <div className="border border-slate-200 rounded-xl bg-white mb-2 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100">
+        <GripVertical size={14} className="text-slate-300 cursor-grab flex-shrink-0"/>
+        <span className="font-mono text-[11px] text-slate-400 flex-shrink-0">{qi + 1}.</span>
+        <button onClick={() => setOpen(o => !o)} className="flex-1 text-left">
+          <span className="text-sm font-medium text-slate-700 line-clamp-1">
+            {q.label || <em className="text-slate-400 font-normal">Câu hỏi chưa đặt tên</em>}
+          </span>
+        </button>
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${Q_TYPE_COLOR[q.type]}`}>
+          {Q_TYPES.find(t => t.value === q.type)?.label.split(" ")[0]}
+        </span>
+        <div className="flex gap-0.5 flex-shrink-0">
+          <button onClick={() => onMove(-1)} disabled={qi === 0}
+            className="p-1 rounded hover:bg-slate-200 disabled:opacity-30"><ArrowUp size={12}/></button>
+          <button onClick={() => onMove(1)} disabled={qi === qTotal - 1}
+            className="p-1 rounded hover:bg-slate-200 disabled:opacity-30"><ArrowDown size={12}/></button>
+          <button onClick={onRemove}
+            className="p-1 rounded hover:bg-red-50 text-red-400"><Trash2 size={12}/></button>
+          <button onClick={() => setOpen(o => !o)} className="p-1 rounded hover:bg-slate-200">
+            {open ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="px-4 py-3 space-y-3">
+          {/* Key + Type row */}
+          <div className="flex gap-3">
+            <div className="w-28 flex-shrink-0">
+              <label className="label-xs">Mã câu hỏi</label>
+              <InputText value={q.question_key}
+                onChange={e => onUpdate("question_key", e.target.value)}
+                className="w-full h-9 text-sm rounded-lg border-slate-200 font-mono"
+                placeholder="A1, B2…"/>
+            </div>
+            <div className="flex-1">
+              <label className="label-xs">Loại câu hỏi</label>
+              <Dropdown value={q.type} options={Q_TYPES}
+                onChange={e => onUpdate("type", e.value)}
+                className="w-full h-9 text-sm rounded-lg border-slate-200"/>
+            </div>
+            <div className="flex items-end pb-1 gap-2 flex-shrink-0">
+              <label className="label-xs hidden sm:block">Bắt buộc</label>
+              <InputSwitch checked={q.required} onChange={e => onUpdate("required", e.value)} className="scale-75"/>
+            </div>
+          </div>
+
+          {/* Label */}
+          <div>
+            <label className="label-xs">Nội dung câu hỏi</label>
+            <InputTextarea value={q.label} rows={2} autoResize
+              onChange={e => onUpdate("label", e.target.value)}
+              className="w-full text-sm rounded-lg border-slate-200"
+              placeholder="Nhập nội dung câu hỏi..."/>
+          </div>
+
+          {/* Options */}
+          {isLikert && (
+            <div className="text-[11px] text-slate-400 italic">
+              Likert dùng thang điểm mặc định 0–5 (Rất không hài lòng → Rất hài lòng).
+            </div>
+          )}
+          {hasOpts && (
+            <div>
+              <label className="label-xs">Các tùy chọn</label>
+              <div className="space-y-1.5">
+                {q.options.map((o, oi) => (
+                  <div key={o.id} className="flex items-center gap-2">
+                    <span className={`w-4 h-4 border border-slate-300 rounded-${q.type==="single"?"full":"sm"} flex-shrink-0`}/>
+                    <InputText value={o.label}
+                      onChange={e => onUpdateOpt(o.id, "label", e.target.value)}
+                      className="flex-1 h-8 text-sm rounded-lg border-slate-200"
+                      placeholder={`Tùy chọn ${oi + 1}`}/>
+                    <button onClick={() => onRemoveOpt(o.id)}
+                      className="text-slate-300 hover:text-red-400 flex-shrink-0"><Trash2 size={12}/></button>
+                  </div>
+                ))}
+                <button onClick={onAddOpt}
+                  className="text-xs text-primary-600 hover:text-primary-800 font-medium flex items-center gap-1 mt-1">
+                  <Plus size={12}/> Thêm tùy chọn
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Preview */}
+          <details className="group">
+            <summary className="text-[11px] text-slate-400 cursor-pointer select-none list-none flex items-center gap-1 hover:text-slate-600">
+              <Eye size={11}/> Xem trước
+            </summary>
+            <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+              <QuestionPreview q={q}/>
+            </div>
+          </details>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ── Section block ──────────────────────────────────────────────── */
+const SectionBlock: React.FC<{
+  sec: FSection; si: number; total: number;
+  onUpdate: (f: "title", v: string) => void;
+  onRemove: () => void;
+  onMove: (d: -1|1) => void;
+  onAddQ: () => void;
+  onUpdateQ: (qid: string, f: keyof FQuestion, v: any) => void;
+  onRemoveQ: (qid: string) => void;
+  onMoveQ: (qid: string, d: -1|1) => void;
+  onAddOpt: (qid: string) => void;
+  onUpdateOpt: (qid: string, oid: string, f: "label"|"option_key", v: string) => void;
+  onRemoveOpt: (qid: string, oid: string) => void;
+}> = ({ sec, si, total, onUpdate, onRemove, onMove, onAddQ,
+        onUpdateQ, onRemoveQ, onMoveQ, onAddOpt, onUpdateOpt, onRemoveOpt }) => {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div className="border border-primary-100 rounded-2xl overflow-hidden mb-4">
+      {/* Section header */}
+      <div className="flex items-center gap-2 px-4 py-3 bg-primary-600 text-white">
+        <GripVertical size={14} className="opacity-60 cursor-grab flex-shrink-0"/>
+        <input
+          value={sec.title}
+          onChange={e => onUpdate("title", e.target.value)}
+          className="flex-1 bg-transparent font-semibold text-sm placeholder-white/60 outline-none border-none min-w-0"
+          placeholder="Tên phần (Section)…"
+        />
+        <span className="text-[11px] font-mono opacity-60 flex-shrink-0">{sec.questions.length} câu</span>
+        <div className="flex gap-0.5 flex-shrink-0">
+          <button onClick={() => onMove(-1)} disabled={si === 0}
+            className="p-1 rounded hover:bg-white/20 disabled:opacity-30"><ArrowUp size={13}/></button>
+          <button onClick={() => onMove(1)} disabled={si === total - 1}
+            className="p-1 rounded hover:bg-white/20 disabled:opacity-30"><ArrowDown size={13}/></button>
+          <button onClick={onRemove} className="p-1 rounded hover:bg-red-500/80"><Trash2 size={13}/></button>
+          <button onClick={() => setOpen(o => !o)} className="p-1 rounded hover:bg-white/20">
+            {open ? <ChevronDown size={13}/> : <ChevronRight size={13}/>}
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="px-4 py-3 bg-slate-50/50">
+          {sec.questions.length === 0 && (
+            <p className="text-sm text-slate-400 italic text-center py-4">Chưa có câu hỏi. Nhấn nút bên dưới để thêm.</p>
+          )}
+          {sec.questions.map((q, qi) => (
+            <QuestionBlock key={q.id} sec={sec} q={q} qi={qi} qTotal={sec.questions.length}
+              onUpdate={(f, v)  => onUpdateQ(q.id, f, v)}
+              onRemove={()      => onRemoveQ(q.id)}
+              onMove={(d)       => onMoveQ(q.id, d)}
+              onAddOpt={()      => onAddOpt(q.id)}
+              onUpdateOpt={(oid,f,v) => onUpdateOpt(q.id, oid, f, v)}
+              onRemoveOpt={(oid)     => onRemoveOpt(q.id, oid)}
+            />
+          ))}
+          <button onClick={onAddQ}
+            className="w-full py-2 border-2 border-dashed border-primary-200 rounded-xl text-sm text-primary-600 hover:bg-primary-50 hover:border-primary-400 transition-all flex items-center justify-center gap-1 mt-1">
+            <Plus size={14}/> Thêm câu hỏi
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ── Main page ──────────────────────────────────────────────────── */
 const TemplateCreate: React.FC = () => {
   const { id, type } = useParams<{ id?: string; type?: string }>();
-  const toast = useRef<Toast>(null);
+  const toast = useRef<any>(null);
 
-  const isValidType =
-    type === undefined || ALLOWED_TYPES.includes(type as FormType);
-
-  if (!isValidType) {
-    //return <Navigate to="/404" replace />;
+  if (type && !ALLOWED_TYPES.includes(type as any))
     return <Navigate to="/admin" replace />;
-  }
 
   const {
-    template,
-    setTemplate,
-    loading,
-    fetching,
-    expandedGroups,
-    toggleGroup,
-    handleSave,
-    handleCancel,
-    addGroup,
-    updateGroup,
-    removeGroup,
-    addOption,
-    updateOption,
-    removeOption,
-    addAnswerOption,
-    updateAnswerOption,
-    removeAnswerOption,
-    addInfoField,
-    updateInfoField,
-    removeInfoField,
-    addInfoOption,
-    updateInfoOption,
-    removeInfoOption
-  } = useTemplateForm(id, type, toast);
+    draft, setField, loading, fetching, preview, setPreview,
+    loadPreset,
+    addSection, updateSection, removeSection, moveSection,
+    addQuestion, updateQuestion, removeQuestion, moveQuestion,
+    addOption, updateOption, removeOption,
+    save, sectionCount, questionCount,
+  } = useFormBuilder(id, type, toast);
 
-  let currentAccumulated = 0;
-  const groupStartIndices = template.data.map((group) => {
-    const start = currentAccumulated;
-    currentAccumulated += group.option.length;
-    return start;
-  });
+  if (fetching) return (
+    <AdminLayout title="Biểu mẫu">
+      <div className="flex items-center justify-center h-64 text-slate-400">
+        <i className="pi pi-spin pi-spinner text-3xl mr-3"/>Đang tải biểu mẫu…
+      </div>
+    </AdminLayout>
+  );
 
-  if (fetching) {
-    return (
-      <AdminLayout title="Chỉnh sửa biểu mẫu">
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden text-sm flex flex-col animate-pulse">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
-              <div className="space-y-2">
-                <div className="h-4 w-40 bg-slate-200 rounded-lg" />
-                <div className="h-3 w-64 bg-slate-100 rounded-lg" />
+  return (
+    <AdminLayout title={id ? "Chỉnh sửa biểu mẫu" : "Tạo biểu mẫu mới"}>
+      <Toast ref={toast}/>
+
+      {/* ── Top action bar ─────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5 px-1">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-primary-900">
+            {id ? "Chỉnh sửa biểu mẫu" : "Tạo biểu mẫu mới"}
+          </h1>
+          <div className="flex gap-2 text-[11px]">
+            <span className="bg-primary-50 text-primary-700 border border-primary-100 px-2 py-0.5 rounded-full font-semibold">
+              {sectionCount} phần
+            </span>
+            <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
+              {questionCount} câu hỏi
+            </span>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button label="Xem trước" icon={preview?"pi pi-eye-slash":"pi pi-eye"}
+            onClick={() => setPreview(!preview)}
+            className="p-button-outlined border-slate-300 text-slate-600 hover:bg-slate-50 font-semibold rounded-xl h-10"/>
+          <Button label="Lưu biểu mẫu" icon="pi pi-save" loading={loading}
+            onClick={save}
+            className="!bg-primary-600 border-none text-white font-bold rounded-xl h-10 shadow-md shadow-primary-100 hover:!bg-primary-700"/>
+        </div>
+      </div>
+
+      {/* ── Two-column layout ──────────────────────────── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5 items-start">
+
+        {/* LEFT: Builder canvas */}
+        <div className="space-y-4">
+
+          {/* Metadata card */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-slate-700 text-sm uppercase tracking-widest">Thông tin biểu mẫu</h2>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-semibold ${draft.status ? "text-green-600":"text-slate-400"}`}>
+                  {draft.status ? "Hoạt động" : "Tạm dừng"}
+                </span>
+                <InputSwitch checked={draft.status} onChange={e => setField("status", e.value)}/>
               </div>
-              <div className="h-7 w-24 bg-slate-200 rounded-full" />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2 space-y-2">
-                <div className="h-3 w-24 bg-slate-200 rounded" />
-                <div className="h-11 bg-slate-100 rounded-xl" />
+
+            <div>
+              <label className="label-xs">Tên biểu mẫu <span className="text-red-500">*</span></label>
+              <InputText value={draft.name} onChange={e => setField("name", e.target.value)}
+                className="w-full rounded-xl border-slate-200 h-11"
+                placeholder="VD: Phiếu khảo sát sự hài lòng người bệnh nội trú 2026"/>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label-xs">Tổ chức / Đơn vị</label>
+                <InputText value={draft.org} onChange={e => setField("org", e.target.value)}
+                  className="w-full rounded-xl border-slate-200 h-10"
+                  placeholder="VD: Bộ Y tế"/>
               </div>
-              <div className="md:col-span-2 space-y-2">
-                <div className="h-3 w-32 bg-slate-200 rounded" />
-                <div className="h-11 bg-slate-100 rounded-xl" />
+              <div>
+                <label className="label-xs">Nhãn (badge)</label>
+                <InputText value={draft.badge} onChange={e => setField("badge", e.target.value)}
+                  className="w-full rounded-xl border-slate-200 h-10"
+                  placeholder="VD: MẪU SỐ 1"/>
               </div>
-              <div className="md:col-span-2 space-y-2">
-                <div className="h-3 w-48 bg-slate-200 rounded" />
-                <div className="h-20 bg-slate-100 rounded-xl" />
-              </div>
+            </div>
+
+            <div>
+              <label className="label-xs">Mô tả / Lời dẫn nhập</label>
+              <InputTextarea value={draft.description} rows={3} autoResize
+                onChange={e => setField("description", e.target.value)}
+                className="w-full rounded-xl border-slate-200 text-sm"
+                placeholder="Mô tả mục đích, đối tượng, hướng dẫn điền phiếu…"/>
             </div>
           </div>
 
-          <div className="p-6 border-b border-slate-100 bg-white">
-            <div className="h-4 w-52 bg-slate-200 rounded mb-2" />
-            <div className="h-3 w-80 bg-slate-100 rounded mb-5" />
-            {[1, 2].map((i) => (
-              <div key={i} className="border border-slate-200 p-4 rounded-xl bg-slate-50 mb-3">
-                <div className="grid grid-cols-12 gap-4">
-                  <div className="col-span-5 space-y-2">
-                    <div className="h-3 w-28 bg-slate-200 rounded" />
-                    <div className="h-11 bg-slate-200 rounded-lg" />
-                  </div>
-                  <div className="col-span-6 space-y-2">
-                    <div className="h-3 w-24 bg-slate-200 rounded" />
-                    <div className="h-11 bg-slate-200 rounded-lg" />
-                  </div>
-                  <div className="col-span-1 space-y-2 flex flex-col items-center">
-                    <div className="h-3 w-10 bg-slate-200 rounded" />
-                    <div className="h-7 w-12 bg-slate-200 rounded-full mt-1" />
-                  </div>
-                </div>
-              </div>
-            ))}
+          {/* Sections */}
+          {draft.sections.length === 0 && (
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center text-slate-400">
+              <p className="text-4xl mb-3">📋</p>
+              <p className="font-semibold mb-1">Biểu mẫu chưa có phần nào</p>
+              <p className="text-sm">Nhấn "Thêm phần" hoặc chọn preset từ thanh bên phải.</p>
+            </div>
+          )}
+
+          {draft.sections.map((sec, si) => (
+            <SectionBlock key={sec.id} sec={sec} si={si} total={draft.sections.length}
+              onUpdate={(f, v)        => updateSection(sec.id, f, v)}
+              onRemove={()            => removeSection(sec.id)}
+              onMove={(d)             => moveSection(sec.id, d)}
+              onAddQ={()              => addQuestion(sec.id)}
+              onUpdateQ={(qid,f,v)    => updateQuestion(sec.id, qid, f, v)}
+              onRemoveQ={(qid)        => removeQuestion(sec.id, qid)}
+              onMoveQ={(qid,d)        => moveQuestion(sec.id, qid, d)}
+              onAddOpt={(qid)         => addOption(sec.id, qid)}
+              onUpdateOpt={(qid,oid,f,v) => updateOption(sec.id, qid, oid, f, v)}
+              onRemoveOpt={(qid,oid)     => removeOption(sec.id, qid, oid)}
+            />
+          ))}
+
+          <button onClick={addSection}
+            className="w-full py-3 border-2 border-dashed border-primary-200 rounded-2xl text-primary-600 hover:bg-primary-50 hover:border-primary-400 transition-all font-semibold flex items-center justify-center gap-2">
+            <Plus size={16}/> Thêm phần (Section)
+          </button>
+        </div>
+
+        {/* RIGHT: Sidebar */}
+        <div className="space-y-4 sticky top-4">
+
+          {/* Preset loader */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <h3 className="font-bold text-slate-700 text-xs uppercase tracking-widest mb-3">Mẫu khởi tạo</h3>
+            <div className="space-y-2">
+              {[
+                { key: "noitru",  label: "Hài lòng nội trú (Mẫu 1 - BYT)", icon: "pi-building" },
+                { key: "ngoaitru",label: "Hài lòng ngoại trú (Mẫu 2 - BYT)", icon: "pi-building" },
+                { key: "blank",   label: "Biểu mẫu trống", icon: "pi-file" },
+              ].map(p => (
+                <button key={p.key}
+                  onClick={() => {
+                    if (window.confirm("Tải mẫu này sẽ thay thế toàn bộ nội dung hiện tại. Tiếp tục?"))
+                      loadPreset(p.key as any);
+                  }}
+                  className="w-full text-left px-3 py-2.5 text-sm rounded-xl border border-slate-200 hover:border-primary-300 hover:bg-primary-50 transition-all flex items-center gap-2 text-slate-600">
+                  <i className={`pi ${p.icon} text-primary-500 flex-shrink-0`}/>
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex-grow p-6 bg-white">
-            <div className="rounded-xl border border-slate-200 overflow-hidden">
-              <div className="bg-primary-800 p-3 flex gap-3">
-                {[2, 12, 12, 8, 5, 5, 5, 5, 5, 7, 5].map((w, i) => (
-                  <div key={i} className={`h-5 bg-primary-600/60 rounded flex-none`} style={{ width: `${w}%` }} />
-                ))}
-              </div>
-              {[1, 2, 3, 4].map((row) => (
-                <div key={row} className={`flex gap-3 p-3 border-b border-slate-100 ${row % 2 === 0 ? 'bg-slate-50' : 'bg-white'}`}>
-                  {[2, 12, 12, 8, 5, 5, 5, 5, 5, 7, 5].map((w, i) => (
-                    <div key={i} className="h-8 bg-slate-200 rounded flex-none" style={{ width: `${w}%` }} />
-                  ))}
+          {/* Quick guide */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <h3 className="font-bold text-slate-700 text-xs uppercase tracking-widest mb-3">Hướng dẫn nhanh</h3>
+            <ul className="text-xs text-slate-500 space-y-2 leading-relaxed">
+              <li><strong className="text-slate-600">Phần:</strong> Nhóm câu hỏi theo chủ đề (A, B, C…)</li>
+              <li><strong className="text-slate-600">Mã câu hỏi:</strong> A1, B3, G2… dùng để map với dữ liệu phản hồi</li>
+              <li><strong className="text-slate-600">Likert:</strong> Thang đo 1–5 + 0 (không sử dụng)</li>
+              <li><strong className="text-slate-600">Single/Multi:</strong> Tự thêm các tùy chọn đáp án</li>
+              <li><strong className="text-slate-600">Bắt buộc:</strong> Người dùng phải trả lời câu hỏi</li>
+            </ul>
+          </div>
+
+          {/* Question type legend */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <h3 className="font-bold text-slate-700 text-xs uppercase tracking-widest mb-3">Loại câu hỏi</h3>
+            <div className="space-y-1.5">
+              {Q_TYPES.map(t => (
+                <div key={t.value} className={`text-[11px] px-2 py-1 rounded-lg border font-medium ${Q_TYPE_COLOR[t.value]}`}>
+                  {t.label}
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="flex justify-between items-center px-6 py-4 border-t border-slate-200 bg-slate-50">
-            <div className="h-9 w-36 bg-slate-200 rounded-lg" />
-            <div className="h-10 w-36 bg-primary-200 rounded-lg" />
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  return (
-    <AdminLayout title={id ? "Chỉnh sửa biểu mẫu" : "Tạo mới biểu mẫu"}>
-      <Toast ref={toast} />
-      <ConfirmDialog />
-      <div className="relative">
-        {loading && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 50,
-              borderRadius: '1.5rem',
-              backdropFilter: 'blur(2px)',
-              backgroundColor: 'rgba(255,255,255,0.65)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '16px',
-              cursor: 'not-allowed',
-            }}
-          >
-            <div style={{
-              background: 'white',
-              borderRadius: '16px',
-              padding: '28px 40px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '14px',
-              border: '1px solid #e2e8f0',
-            }}>
-              <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem', color: 'var(--primary-color, #003159)' }} />
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontWeight: 700, color: '#1e293b', fontSize: '15px', margin: 0 }}>Đang lưu biểu mẫu...</p>
-                <p style={{ color: '#64748b', fontSize: '12px', margin: '4px 0 0' }}>Vui lòng không thao tác trong lúc này</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className={`bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden text-sm flex flex-col${loading ? ' pointer-events-none select-none' : ''}`}>
-
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex-shrink-0">
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
-              <div>
-                <h3 className="text-primary-900 font-bold text-base">Trạng thái biểu mẫu</h3>
-                <p className="text-slate-500 text-xs mt-1">Kích hoạt hoặc vô hiệu hóa biểu mẫu này trên hệ thống</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={template.status ? 'text-green-600 font-bold text-sm' : 'text-slate-400 text-sm font-medium'}>
-                  {template.status ? 'Đang hoạt động' : 'Tạm dừng'}
-                </span>
-                <InputSwitch checked={template.status} onChange={(e) => setTemplate({ ...template, status: e.value })} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-slate-700 font-bold mb-2">
-                  Tên biểu mẫu <span className="text-red-500">*</span>
-                </label>
-                <InputText
-                  value={template.name}
-                  onChange={(e) => setTemplate({ ...template, name: e.target.value })}
-                  className={`w-full bg-white border-slate-300 focus:border-primary-500 shadow-sm p-4 rounded-xl ${!template.name && 'border-orange-200'}`}
-                  placeholder="Nhập tên biểu mẫu/phiếu đánh giá..."
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-slate-700 font-bold mb-2">Mô tả (Mục đích, năm, đối tượng...)</label>
-                <InputTextarea
-                  value={template.description}
-                  onChange={(e) => setTemplate({ ...template, description: e.target.value })}
-                  rows={3}
-                  className="w-full border-slate-300 focus:border-primary-500 shadow-sm p-3 text-base"
-                  placeholder="Nhập phụ chú ngắn gọn..."
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-slate-700 font-bold mb-2">Thời gian áp dụng</label>
-                <div className="flex flex-col md:flex-row items-center gap-3">
-                  {/* Từ ngày */}
-                  <div className="w-full relative">
-                    <i className="pi pi-calendar absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none text-lg"></i>
-                    <Calendar
-                      value={template.startDate ? new Date(template.startDate) : null}
-                      onChange={(e) => setTemplate({ ...template, startDate: e.value })}
-                      className="w-full"
-                      inputClassName="w-full bg-white border border-slate-300 focus:border-primary-500 shadow-sm p-4 pl-12 rounded-xl text-base transition-colors"
-                      placeholder="Từ ngày (dd/mm/yyyy)..."
-                      dateFormat="dd/mm/yy"
-                    />
-                  </div>
-
-                  {/* Mũi tên ngăn cách (chỉ hiện trên màn hình lớn) */}
-                  <div className="hidden md:flex text-slate-300 px-2 flex-shrink-0">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                    </svg>
-                  </div>
-
-                  {/* Đến ngày */}
-                  <div className="w-full relative">
-                    <i className="pi pi-calendar absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none text-lg"></i>
-                    <Calendar
-                      value={template.endDate ? new Date(template.endDate) : null}
-                      onChange={(e) => setTemplate({ ...template, endDate: e.value })}
-                      className="w-full"
-                      inputClassName="w-full bg-white border border-slate-300 focus:border-primary-500 shadow-sm p-4 pl-12 rounded-xl text-base transition-colors"
-                      placeholder="Đến ngày (dd/mm/yyyy)..."
-                      dateFormat="dd/mm/yy"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <InfoBuilder
-            info={template.info || []}
-            updateInfoField={updateInfoField}
-            removeInfoField={removeInfoField}
-            addInfoOption={addInfoOption}
-            updateInfoOption={updateInfoOption}
-            removeInfoOption={removeInfoOption}
-            addInfoField={addInfoField}
-          />
-
-          <div className="flex-grow p-6 bg-white flex flex-col">
-            <div className="rounded-xl border border-primary-200 overflow-x-auto shadow-sm relative">
-              {template.type === 'reflect' ? (
-                <ReflectBuilder
-                  data={template.data}
-                  expandedGroups={expandedGroups}
-                  groupStartIndices={groupStartIndices}
-                  toggleGroup={toggleGroup}
-                  updateGroup={updateGroup}
-                  removeGroup={removeGroup}
-                  addOption={addOption}
-                  updateOption={updateOption}
-                  removeOption={removeOption}
-                />
-              ) : (
-                <EvaluateBuilder
-                  data={template.data}
-                  expandedGroups={expandedGroups}
-                  groupStartIndices={groupStartIndices}
-                  toggleGroup={toggleGroup}
-                  updateGroup={updateGroup}
-                  removeGroup={removeGroup}
-                  addOption={addOption}
-                  updateOption={updateOption}
-                  removeOption={removeOption}
-                  addAnswerOption={addAnswerOption}
-                  updateAnswerOption={updateAnswerOption}
-                  removeAnswerOption={removeAnswerOption}
-                />
-              )}
-            </div>
-
-            <div className="mt-6 mb-2 flex justify-center flex-shrink-0">
-              <Button
-                label="Thêm nhóm nội dung"
-                icon="pi pi-plus"
-                onClick={addGroup}
-                className="bg-primary-50 text-primary-700 border-dashed border-2 border-primary-300 hover:bg-primary-100 hover:border-primary-500 font-bold px-8 py-3 rounded-xl shadow-sm transition-all"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center px-6 py-4 border-t border-slate-200 bg-slate-50 flex-shrink-0">
-            <Button
-              label="Hủy bỏ & Quay lại"
-              icon="pi pi-arrow-left"
-              onClick={handleCancel}
-              className="p-button-text text-slate-600 hover:bg-slate-200 font-semibold"
-            />
-            <div className="flex items-center gap-3">
-              <Button
-                label="Lưu biểu mẫu"
-                icon="pi pi-save"
-                loading={loading}
-                onClick={handleSave}
-                className="text-white bg-primary-600 border-primary-600 hover:bg-primary-700 font-bold px-8 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all"
-              />
-            </div>
-          </div>
         </div>
       </div>
+
+      {/* ── Bottom save bar ────────────────────────────── */}
+      <div className="mt-6 flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm sticky bottom-0">
+        <button onClick={() => window.history.back()}
+          className="text-slate-500 hover:text-slate-700 text-sm font-semibold flex items-center gap-1">
+          ← Hủy bỏ & Quay lại
+        </button>
+        <Button label="Lưu biểu mẫu" icon="pi pi-save" loading={loading}
+          onClick={save}
+          className="!bg-primary-600 border-none text-white font-bold rounded-xl px-6 shadow-md shadow-primary-100 hover:!bg-primary-700"/>
+      </div>
+
+      <style>{`
+        .label-xs {
+          display: block;
+          font-size: 11px;
+          font-weight: 700;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 5px;
+        }
+      `}</style>
     </AdminLayout>
   );
 };

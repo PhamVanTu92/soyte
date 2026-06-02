@@ -1,582 +1,307 @@
 import AdminLayout from "../components/AdminLayout";
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { formService } from "../services/formService";
+import { surveyService } from "../services/surveyService";
 import { Button } from "primereact/button";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Dialog } from "primereact/dialog";
-import { surveyService } from "../services/surveyService";
-
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Toast } from "@/components/prime";
-import { Plus, QrCode } from "lucide-react";
+import { Plus, QrCode, Pencil, Copy, FileText, Layers, HelpCircle } from "lucide-react";
+
 const ALLOWED_TYPES = ["evaluate", "reflect"] as const;
-type FormType = (typeof ALLOWED_TYPES)[number];
+
 const statusOptions = [
-  { label: "Tất cả", value: "all" },
-  { label: "Hoạt động", value: "active" },
-  { label: "Đang tắt", value: "inactive" },
+  { label: "Tất cả trạng thái", value: "all" },
+  { label: "Hoạt động",         value: "active" },
+  { label: "Đang tắt",          value: "inactive" },
 ];
 
 const TemplatesManagement: React.FC = () => {
-  const toast = useRef<Toast>(null);
+  const toast    = useRef<any>(null);
   const navigate = useNavigate();
   const { type } = useParams<{ type?: string }>();
-  const isValidType =
-    type === undefined || ALLOWED_TYPES.includes(type as FormType);
 
-  if (!isValidType) {
-    //return <Navigate to="/404" replace />;
+  if (type && !ALLOWED_TYPES.includes(type as any))
     return <Navigate to="/admin" replace />;
-  }
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+
+  const [templates,    setTemplates]    = useState<any[]>([]);
+  const [loading,      setLoading]      = useState(false);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [lazyParams, setLazyParams] = useState({
-    first: 0,
-    rows: 30,
-    page: 1,
-  });
+  const [page,         setPage]         = useState(1);
+  const PAGE_SIZE = 24;
 
-  // Filter states
-  const [searchText, setSearchText] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [search,       setSearch]       = useState("");
+  const [debSearch,    setDebSearch]    = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  // QR Dialog states
-  const [qrDialogVisible, setQrDialogVisible] = useState(false);
-  const [selectedFormForQr, setSelectedFormForQr] = useState<any>(null);
-  const [qrSurveys, setQrSurveys] = useState<any[]>([]);
-  const [selectedSurveyKey, setSelectedSurveyKey] = useState<string | null>(null);
-  const [loadingQrSurveys, setLoadingQrSurveys] = useState(false);
+  // QR dialog
+  const [qrVisible,  setQrVisible]  = useState(false);
+  const [qrForm,     setQrForm]     = useState<any>(null);
+  const [qrSurveys,  setQrSurveys]  = useState<any[]>([]);
+  const [qrSurvKey,  setQrSurvKey]  = useState<string | null>(null);
+  const [qrLoading,  setQrLoading]  = useState(false);
 
+  /* ── Fetch ─────────────────────────────────────────── */
   const fetchTemplates = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const page = lazyParams.page;
-      const limit = lazyParams.rows;
-
-      const data = await formService.fetchForms(
-        page,
-        limit,
-        type,
-        debouncedSearch.trim() || undefined,
-      );
-
-      let list: any[] = [];
-      let total = 0;
-
-      if (data && data.data && Array.isArray(data.data.items)) {
-        list = data.data.items;
-        total = data.data.total || list.length;
-      } else if (Array.isArray(data)) {
-        list = data;
-        total = data.length;
-      }
-
+      const data = await formService.fetchForms(page, PAGE_SIZE, type, debSearch || undefined);
+      const raw = data?.data ?? data;
+      const list  = raw?.items ?? (Array.isArray(raw) ? raw : []);
+      const total = raw?.total ?? list.length;
       setTemplates(list);
       setTotalRecords(total);
-    } catch (error) {
-      console.error(error);
-      toast.current?.show({
-        severity: "error",
-        summary: "Lỗi",
-        detail: "Không thể tải danh sách biểu mẫu",
-      });
-    } finally {
-      setLoading(false);
-    }
+    } catch {
+      toast.current?.show({ severity: "error", summary: "Lỗi", detail: "Không thể tải danh sách biểu mẫu" });
+    } finally { setLoading(false); }
   };
 
+  useEffect(() => { fetchTemplates(); }, [page, type, debSearch]);
   useEffect(() => {
-    fetchTemplates();
-  }, [lazyParams.page, lazyParams.rows, type, debouncedSearch]);
+    const t = setTimeout(() => { setDebSearch(search.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      setDebouncedSearch(searchText.trim());
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [searchText]);
-
-  useEffect(() => {
-    setLazyParams((prev) => ({ ...prev, first: 0, page: 1 }));
-  }, [debouncedSearch]);
-
-  const onPage = (event: any) => {
-    setLazyParams({
-      first: event.first,
-      rows: event.rows,
-      page: event.page + 1,
-    });
-  };
-
-  const handleAddNew = () => {
-    navigate(`/admin/templates/create/${type}`);
-  };
-
-  const editTemplate = (rowData: any) => {
-    const formId = rowData.id || rowData._id;
-    navigate(`/admin/templates/edit/${formId}`);
-  };
-
-  // const confirmDeleteTemplate = (rowData: any) => {
-  //   confirmDialog({
-  //     message: (
-  //       <div className="flex flex-col items-center justify-center text-center pt-4">
-  //         <i className="pi pi-exclamation-circle text-red-500 text-5xl mb-4"></i>
-  //         <p className="text-lg font-bold text-slate-800">Cảnh báo xóa biểu mẫu</p>
-  //         <p className="text-sm text-slate-500 mt-2">
-  //           Bạn có chắc chắn muốn xóa biểu mẫu <span className="font-bold text-primary-600">"{rowData.name || rowData.name}"</span> không?<br />
-  //           Dữ liệu đã xóa sẽ không thể phục hồi.
-  //         </p>
-  //       </div>
-  //     ),
-  //     header: 'Xác nhận xóa',
-  //     icon: 'hidden',
-  //     acceptClassName: 'bg-red-600 border-red-600 hover:bg-red-700 text-white font-bold ml-2',
-  //     rejectClassName: 'p-button-text text-slate-600 hover:bg-slate-100 font-bold',
-  //     acceptLabel: 'Đồng ý xóa',
-  //     rejectLabel: 'Hủy bỏ',
-  //     className: 'w-[400px]',
-  //     accept: async () => {
-  //       try {
-  //         const formId = rowData.id || rowData._id;
-  //         await formService.deleteForm(formId);
-  //         toast.current?.show({ severity: 'success', summary: 'Thành công', detail: `Đã xóa biểu mẫu ${rowData.name || rowData.name}` });
-  //         fetchTemplates();
-  //       } catch (error) {
-  //         console.error(error);
-  //         toast.current?.show({ severity: 'error', summary: 'Lỗi', detail: 'Không thể xóa biểu mẫu' });
-  //       }
-  //     },
-  //     reject: () => { },
-  //   });
-  // };
-
-  const sttBodyTemplate = (rowData: any, options: { rowIndex: number }) => {
-    return options.rowIndex + lazyParams.first + 1;
-  };
-
-  const showQr = async (rowData: any) => {
-    const formId = rowData.id || rowData._id;
-    setSelectedFormForQr(rowData);
-    setSelectedSurveyKey(null);
-    setQrDialogVisible(true);
-    
-    try {
-      setLoadingQrSurveys(true);
-      const data = await surveyService.fetchSurveys(1, 1000, type, true);
-      const surveyList = data?.items || data || [];
-      
-      const relatedSurveys = surveyList.filter((survey: any) => {
-        return (survey.form_ids || []).some((f: any) => {
-          const fId = f.form_id || f.id || f;
-          return fId === formId;
-        });
-      });
-      
-      const mappedSurveys = relatedSurveys.map((s: any) => ({
-        label: s.name,
-        value: s.key || s.id
-      }));
-      setQrSurveys(mappedSurveys);
-      if (mappedSurveys.length > 0) {
-          setSelectedSurveyKey(mappedSurveys[0].value);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.current?.show({ severity: "error", summary: "Lỗi", detail: "Không thể lấy danh sách cuộc khảo sát" });
-    } finally {
-      setLoadingQrSurveys(false);
-    }
-  };
-
-  const handleConfirmQr = () => {
-    if (!selectedFormForQr) return;
-    const formId = selectedFormForQr.id || selectedFormForQr._id;
-    
-    let url = `/templates/qr/${formId}`;
-    if (selectedSurveyKey) {
-      url += `?survey_key=${selectedSurveyKey}`;
-    }
-    
-    navigate(url);
-    setQrDialogVisible(false);
-  };
-
-  const actionBodyTemplate = (rowData: any) => {
-    return (
-      <div className="flex gap-2">
-        <Button
-          icon="pi pi-pencil"
-          rounded
-          outlined
-          className="w-8 h-8 p-0 text-primary-600 border-primary-600 hover:bg-primary-50"
-          onClick={() => editTemplate(rowData)}
-        />
-        <Button
-          icon={<QrCode size={14} />}
-          rounded
-          outlined
-          className="w-8 h-8 p-0 text-secondary-600 border-secondary-600 hover:bg-secondary-50"
-          onClick={() => showQr(rowData)}
-          title="Xem mã QR"
-        />
-        {/* <Button icon="pi pi-trash" rounded outlined severity="danger" className="w-8 h-8 p-0 hover:bg-red-50" onClick={() => confirmDeleteTemplate(rowData)} /> */}
-      </div>
-    );
-  };
-
-  const statusBodyTemplate = (rowData: any) => {
-    const isActive =
-      rowData.status === true ||
-      rowData.status === "active" ||
-      rowData.status === "true";
-    return (
-      <span
-        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-          isActive
-            ? "bg-green-100 text-green-800 border border-green-200"
-            : "bg-slate-100 text-slate-800 border border-slate-200"
-        }`}
-      >
-        {isActive ? "Hoạt động" : "Đang tắt"}
-      </span>
-    );
-  };
-
-  const descriptionBodyTemplate = (rowData: any) => {
-    return (
-      <div
-        title={rowData.description}
-        style={{
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-          lineHeight: "1.5em",
-          maxHeight: "3em",
-          wordBreak: "break-word",
-        }}
-      >
-        {rowData.description || "—"}
-      </div>
-    );
-  };
-
+  /* ── Stats ─────────────────────────────────────────── */
   const stats = useMemo(() => {
-    // Note: Since data is paginated, these counts reflect the current page/local view
-    // In a real app, you might want a separate API for global counts
-    const total = totalRecords;
-    let active = 0;
-    let inactive = 0;
-
-    templates.forEach((t) => {
-      const isA =
-        t.status === true || t.status === "active" || t.status === "true";
-      if (isA) active++;
-      else inactive++;
-    });
-
-    return { total, active, inactive };
+    const active   = templates.filter(t => t.status === "active" || t.status === true).length;
+    return { total: totalRecords, active, inactive: totalRecords - active };
   }, [templates, totalRecords]);
 
-  // Status filter still applied client-side (server doesn't expose it for forms)
-  const filteredTemplates = templates.filter((t) => {
-    const isActive =
-      t.status === true || t.status === "active" || t.status === "true";
-    return statusFilter === "all"
-      ? true
-      : statusFilter === "active"
-        ? isActive
-        : !isActive;
-  });
+  /* ── Filtered (client-side status only) ────────────── */
+  const filtered = useMemo(() => {
+    if (statusFilter === "all") return templates;
+    return templates.filter(t => {
+      const isActive = t.status === "active" || t.status === true;
+      return statusFilter === "active" ? isActive : !isActive;
+    });
+  }, [templates, statusFilter]);
 
-  const handleResetFilter = () => {
-    setSearchText("");
-    setStatusFilter("all");
+  /* ── QR dialog ──────────────────────────────────────── */
+  const openQr = async (form: any) => {
+    setQrForm(form); setQrSurvKey(null); setQrVisible(true); setQrLoading(true);
+    try {
+      const data = await surveyService.fetchSurveys(1, 1000, type, true);
+      const list = data?.items ?? data ?? [];
+      const related = list.filter((s: any) =>
+        (s.form_ids || []).some((f: any) => (f.form_id ?? f.id ?? f) === form.id)
+      ).map((s: any) => ({ label: s.name, value: s.key ?? s.id }));
+      setQrSurveys(related);
+      if (related.length > 0) setQrSurvKey(related[0].value);
+    } catch { /* ignore */ }
+    finally { setQrLoading(false); }
   };
+
+  const confirmQr = () => {
+    if (!qrForm) return;
+    navigate(`/templates/qr/${qrForm.id}${qrSurvKey ? `?survey_key=${qrSurvKey}` : ""}`);
+    setQrVisible(false);
+  };
+
+  /* ── Card ───────────────────────────────────────────── */
+  const TemplateCard: React.FC<{ t: any }> = ({ t }) => {
+    const isActive = t.status === "active" || t.status === true;
+    const sectionCount  = t.section_count  ?? t.sections?.length  ?? "—";
+    const questionCount = t.question_count ?? "—";
+    const likertCount   = t.likert_count   ?? "—";
+
+    return (
+      <div className={`bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden
+        ${isActive ? "border-slate-100" : "border-slate-100 opacity-75"}`}>
+
+        {/* Card top accent */}
+        <div className={`h-1 ${isActive ? "bg-gradient-to-r from-primary-400 to-primary-600" : "bg-slate-200"}`}/>
+
+        <div className="p-5 flex-1 flex flex-col gap-3">
+          {/* Badge + status */}
+          <div className="flex items-center justify-between gap-2">
+            {t.badge ? (
+              <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-100">
+                {t.badge}
+              </span>
+            ) : <span/>}
+            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full
+              ${isActive ? "bg-green-50 text-green-600 border border-green-100" : "bg-slate-100 text-slate-400 border border-slate-200"}`}>
+              {isActive ? "Hoạt động" : "Đang tắt"}
+            </span>
+          </div>
+
+          {/* Title */}
+          <div>
+            <h4 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2">{t.name}</h4>
+            {t.org && <p className="text-[11px] text-primary-600 font-semibold mt-0.5">{t.org}</p>}
+          </div>
+
+          {/* Description */}
+          {t.description && (
+            <p className="text-[12px] text-slate-500 leading-relaxed line-clamp-2">{t.description}</p>
+          )}
+
+          {/* Meta chips */}
+          <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 mt-auto">
+            <span className="flex items-center gap-1 text-[11px] text-slate-500">
+              <Layers size={11} className="text-primary-400"/> {sectionCount} phần
+            </span>
+            <span className="flex items-center gap-1 text-[11px] text-slate-500">
+              <HelpCircle size={11} className="text-primary-400"/> {questionCount} câu hỏi
+            </span>
+            {typeof likertCount === "number" && likertCount > 0 && (
+              <span className="flex items-center gap-1 text-[11px] text-primary-600 font-semibold">
+                ★ {likertCount} Likert
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="px-4 py-3 bg-slate-50/50 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
+          <Button
+            icon={<Pencil size={12}/>} label="Sửa"
+            onClick={() => navigate(`/admin/templates/edit/${t.id}`)}
+            className="!text-xs !py-1.5 !px-3 p-button-outlined border-primary-200 text-primary-700 hover:bg-primary-50 rounded-lg font-semibold flex-1"
+          />
+          <Button
+            icon={<QrCode size={12}/>} label="QR"
+            onClick={() => openQr(t)}
+            className="!text-xs !py-1.5 !px-3 p-button-outlined border-secondary-200 text-secondary-700 hover:bg-secondary-50 rounded-lg font-semibold flex-1"
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const totalPages = Math.ceil(totalRecords / PAGE_SIZE);
 
   return (
     <AdminLayout title="Quản lý biểu mẫu">
-      <Toast ref={toast} />
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Thẻ 1: Tổng số biểu mẫu */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center gap-4 transition-all hover:shadow-md">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
-            <i className="pi pi-file text-lg"></i>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-              Tổng biểu mẫu
-            </p>
-            <h3 className="text-2xl font-black text-slate-800 leading-none">
-              {stats.total}
-            </h3>
-          </div>
-        </div>
+      <Toast ref={toast}/>
 
-        {/* Thẻ 2: Đang hoạt động */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center gap-4 transition-all hover:shadow-md">
-          <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center text-green-600 flex-shrink-0">
-            <i className="pi pi-check-circle text-lg"></i>
+      {/* ── Stats ───────────────────────────────────────── */}
+      <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: "Tổng biểu mẫu", value: stats.total,    icon: "pi-file",        color: "blue" },
+          { label: "Hoạt động",     value: stats.active,   icon: "pi-check-circle",color: "green" },
+          { label: "Đang tắt",      value: stats.inactive, icon: "pi-eye-slash",   color: "orange" },
+        ].map(c => (
+          <div key={c.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl bg-${c.color}-50 flex items-center justify-center text-${c.color}-600 flex-shrink-0`}>
+              <i className={`pi ${c.icon}`}/>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{c.label}</p>
+              <h3 className="text-2xl font-black text-slate-800 leading-none">{loading ? "…" : c.value}</h3>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-              Hoạt động
-            </p>
-            <h3 className="text-2xl font-black text-slate-800 leading-none">
-              {stats.active}
-            </h3>
-          </div>
-        </div>
-
-        {/* Thẻ 3: Đang tắt */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center gap-4 transition-all hover:shadow-md">
-          <div className="w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 flex-shrink-0">
-            <i className="pi pi-eye-slash text-lg"></i>
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-              Đang ẩn
-            </p>
-            <h3 className="text-2xl font-black text-slate-800 leading-none">
-              {stats.inactive}
-            </h3>
-          </div>
-        </div>
+        ))}
         <div className="flex items-center justify-center">
           <Button
-            onClick={() => handleAddNew()}
-            className="w-full !bg-secondary-600 hover:!bg-secondary-700 text-white font-black py-4 rounded-2xl shadow-xl shadow-secondary-100 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-1"
-          >
-            <Plus size={24} /> Thêm biểu mẫu
+            onClick={() => navigate(`/admin/templates/create/${type}`)}
+            className="w-full !bg-secondary-600 hover:!bg-secondary-700 border-none text-white font-black py-4 rounded-2xl shadow-xl shadow-secondary-100 flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5">
+            <Plus size={20}/> Thêm biểu mẫu
           </Button>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden p-6 relative">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="text-xl font-bold text-primary-900">
-            Danh sách biểu mẫu
-          </h2>
-        </div>
-
-        {/* Filter bar */}
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "flex-end",
-            gap: "12px",
-            marginBottom: "20px",
-            padding: "16px 20px",
-            background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
-            borderRadius: "16px",
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-          }}
-        >
-          {/* Search input */}
-          <div style={{ flex: 1, minWidth: "220px" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "11px",
-                fontWeight: 600,
-                color: "#64748b",
-                marginBottom: "6px",
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-              }}
-            >
-              <i
-                className="pi pi-search"
-                style={{ marginRight: "5px", fontSize: "10px" }}
-              />
-              Tìm kiếm theo tên
-            </label>
-            <InputText
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Nhập tên biểu mẫu..."
-              style={{
-                width: "100%",
-                fontSize: "13.5px",
-                borderRadius: "10px",
-                border: "1.5px solid #e2e8f0",
-                padding: "9px 14px",
-                background: "#fff",
-                color: "#1e293b",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                outline: "none",
-                transition: "border-color 0.2s",
-              }}
-            />
+      {/* ── Filter bar ──────────────────────────────────── */}
+      <div className="flex flex-wrap items-end gap-3 mb-5 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex-1 min-w-[220px]">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Tìm kiếm</label>
+          <div className="relative">
+            <i className="pi pi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"/>
+            <InputText value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full h-10 pl-9 rounded-xl border-slate-200 text-sm"
+              placeholder="Tên biểu mẫu…"/>
           </div>
-
-          {/* Status dropdown */}
-          <div style={{ minWidth: "200px" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "11px",
-                fontWeight: 600,
-                color: "#64748b",
-                marginBottom: "6px",
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-              }}
-            >
-              <i
-                className="pi pi-filter"
-                style={{ marginRight: "5px", fontSize: "10px" }}
-              />
-              Trạng thái
-            </label>
-            <Dropdown
-              value={statusFilter}
-              options={statusOptions}
-              onChange={(e) => setStatusFilter(e.value)}
-              placeholder="Tất cả"
-              style={{
-                width: "100%",
-                fontSize: "13.5px",
-                borderRadius: "10px",
-                border: "1.5px solid #e2e8f0",
-                background: "#fff",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-              }}
-            />
-          </div>
-
-          {/* Reset button */}
-          <Button
-            label="Đặt lại"
-            icon="pi pi-refresh"
-            onClick={handleResetFilter}
-            style={{
-              fontSize: "13px",
-              fontWeight: 500,
-              color: "#475569",
-              background: "#fff",
-              border: "1.5px solid #e2e8f0",
-              borderRadius: "10px",
-              padding: "9px 18px",
-              cursor: "pointer",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              transition: "all 0.15s ease",
-              whiteSpace: "nowrap",
-            }}
-          />
         </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <DataTable
-            value={filteredTemplates}
-            loading={loading}
-            lazy
-            paginator
-            first={lazyParams.first}
-            rows={lazyParams.rows}
-            totalRecords={totalRecords}
-            onPage={onPage}
-            rowsPerPageOptions={[30, 50, 100]}
-            tableStyle={{ minWidth: "50rem" }}
-            emptyMessage="Không có dữ liệu phù hợp"
-            scrollable
-            scrollHeight="640px"
-          >
-            <Column
-              header="STT"
-              body={sttBodyTemplate}
-              style={{ width: "5rem" }}
-            ></Column>
-            <Column
-              field="name"
-              header="Tên biểu mẫu"
-              style={{ width: "25rem" }}
-            ></Column>
-            <Column
-              field="description"
-              header="Mô tả"
-              body={descriptionBodyTemplate}
-            ></Column>
-            <Column
-              field="status"
-              header="Trạng thái"
-              body={statusBodyTemplate}
-              style={{ width: "10rem" }}
-            ></Column>
-            <Column
-              body={actionBodyTemplate}
-              exportable={false}
-              style={{ width: "8rem" }}
-              header="Thao tác"
-            ></Column>
-          </DataTable>
+        <div className="w-52">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Trạng thái</label>
+          <Dropdown value={statusFilter} options={statusOptions}
+            onChange={e => setStatusFilter(e.value)}
+            className="w-full h-10 rounded-xl border-slate-200 text-sm"/>
         </div>
+        <Button label="Đặt lại" icon="pi pi-refresh"
+          onClick={() => { setSearch(""); setStatusFilter("all"); }}
+          className="h-10 px-4 p-button-outlined border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl font-bold"/>
       </div>
 
-      <Dialog 
-        header="Sinh mã QR biểu mẫu"
-        visible={qrDialogVisible} 
-        onHide={() => setQrDialogVisible(false)}
-        style={{ width: '450px' }}
-        footer={
-          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
-            <Button 
-              label="Hủy" 
-              className="p-button-text text-slate-500 font-bold px-4 py-2 hover:bg-slate-50 rounded-xl transition-colors" 
-              onClick={() => setQrDialogVisible(false)} 
-            />
-            <Button 
-                label="Sinh mã QR" 
-                icon="pi pi-qrcode"
-                className="bg-primary-600 hover:bg-primary-700 border-none text-white font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-md shadow-primary-200 transition-all" 
-                onClick={handleConfirmQr} 
-                disabled={qrSurveys.length > 0 && !selectedSurveyKey} 
-            />
-          </div>
-        }
-      >
-        <div className="flex flex-col gap-4 py-2 pt-4">
-          <p className="text-sm text-slate-600">
-            Mã QR sinh ra sẽ tự động liên kết với cuộc khảo sát tương ứng (nếu có).
-          </p>
-          
-          {loadingQrSurveys ? (
-            <div className="flex flex-col items-center justify-center my-6 gap-3">
-                <i className="pi pi-spin pi-spinner text-3xl text-primary-500"></i>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Đang tải cuộc khảo sát...</span>
-            </div>
-          ) : qrSurveys.length === 0 ? (
-            <div className="text-sm text-amber-700 bg-amber-50 p-4 rounded-[1rem] border border-amber-100 flex items-start gap-3 shadow-sm">
-              <i className="pi pi-exclamation-triangle mt-0.5 text-lg"></i>
-              <div>
-                <p className="font-bold mb-1">Không tìm thấy cuộc khảo sát</p>
-                <p className="opacity-90 italic">Biểu mẫu này hiện không nằm trong cuộc khảo sát nào đang hoạt động. Bạn vẫn có thể tạo mã QR dùng chung.</p>
+      {/* ── Card grid ───────────────────────────────────── */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-100 h-52 animate-pulse">
+              <div className="h-1 bg-slate-200 rounded-t-2xl"/>
+              <div className="p-5 space-y-3">
+                <div className="h-3 w-16 bg-slate-200 rounded"/>
+                <div className="h-4 w-3/4 bg-slate-200 rounded"/>
+                <div className="h-3 w-full bg-slate-100 rounded"/>
+                <div className="h-3 w-2/3 bg-slate-100 rounded"/>
               </div>
             </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-dashed border-slate-200 py-16 text-center text-slate-400">
+          <FileText size={40} className="mx-auto mb-3 opacity-30"/>
+          <p className="font-semibold">Không tìm thấy biểu mẫu nào</p>
+          <p className="text-sm mt-1">Thử thay đổi bộ lọc hoặc tạo biểu mẫu mới.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filtered.map(t => <TemplateCard key={t.id} t={t}/>)}
+          {/* Add-new card */}
+          <button
+            onClick={() => navigate(`/admin/templates/create/${type}`)}
+            className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 py-10 text-slate-400 hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50 transition-all min-h-[180px]">
+            <Plus size={32}/>
+            <span className="font-semibold text-sm">Tạo biểu mẫu mới</span>
+          </button>
+        </div>
+      )}
+
+      {/* ── Pagination ──────────────────────────────────── */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <Button icon="pi pi-chevron-left" onClick={() => setPage(p => Math.max(1, p-1))}
+            disabled={page === 1} className="w-9 h-9 p-button-outlined rounded-xl border-slate-200"/>
+          <span className="text-sm text-slate-600 font-semibold px-3">
+            Trang {page} / {totalPages}
+          </span>
+          <Button icon="pi pi-chevron-right" onClick={() => setPage(p => Math.min(totalPages, p+1))}
+            disabled={page === totalPages} className="w-9 h-9 p-button-outlined rounded-xl border-slate-200"/>
+        </div>
+      )}
+
+      {/* ── QR Dialog ───────────────────────────────────── */}
+      <Dialog header="Sinh mã QR biểu mẫu" visible={qrVisible} onHide={() => setQrVisible(false)}
+        style={{ width: "420px" }}
+        footer={
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <Button label="Hủy" className="p-button-text text-slate-500 font-bold" onClick={() => setQrVisible(false)}/>
+            <Button label="Tạo mã QR" icon="pi pi-qrcode"
+              className="!bg-primary-600 border-none text-white font-bold rounded-xl px-5"
+              onClick={confirmQr} disabled={qrSurveys.length > 0 && !qrSurvKey}/>
+          </div>
+        }>
+        <div className="py-3 space-y-4 text-sm">
+          <p className="text-slate-500">Mã QR sẽ liên kết với cuộc khảo sát bạn chọn.</p>
+          {qrLoading ? (
+            <div className="flex items-center justify-center py-4 gap-2 text-slate-400">
+              <i className="pi pi-spin pi-spinner"/> Đang tải cuộc khảo sát…
+            </div>
+          ) : qrSurveys.length === 0 ? (
+            <div className="bg-amber-50 border border-amber-100 text-amber-700 rounded-xl p-3 text-sm flex gap-2">
+              <i className="pi pi-exclamation-triangle mt-0.5"/>
+              <span>Biểu mẫu chưa nằm trong cuộc khảo sát nào. Vẫn có thể tạo QR dùng chung.</span>
+            </div>
           ) : (
-            <div className="flex flex-col gap-2">
-               <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Thuộc cuộc khảo sát <span className="text-red-500">*</span></label>
-               <Dropdown 
-                  value={selectedSurveyKey}
-                  options={qrSurveys}
-                  onChange={(e) => setSelectedSurveyKey(e.value)}
-                  placeholder="-- Chọn cuộc khảo sát --"
-                  className="w-full border-slate-200 rounded-[1rem] shadow-sm"
-               />
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                Cuộc khảo sát <span className="text-red-500">*</span>
+              </label>
+              <Dropdown value={qrSurvKey} options={qrSurveys} onChange={e => setQrSurvKey(e.value)}
+                className="w-full rounded-xl border-slate-200"/>
             </div>
           )}
         </div>
