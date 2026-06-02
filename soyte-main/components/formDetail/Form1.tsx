@@ -717,7 +717,7 @@ export default function BieuMau1Table({ id, type, formJson, survey_key }: any) {
         status: "pending",
       };
 
-      const result = await api.post("/feedbacks", payload);
+      const result = await api.post("/feedbacks-new", payload);
 
       // Chỉ show toast khi server không có message (api.ts chưa bắn)
       if (!result?.message) {

@@ -202,7 +202,7 @@ export default function SurveyInfo({
         setCheckUnitStatus("checking");
 
         api
-          .get("/feedbacks/check-unit", {
+          .get("/feedbacks-new/check-unit", {
             survey_key: survey_key,
             unit_id: selectedOption.key,
             form_id: Number(form_id),

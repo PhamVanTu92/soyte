@@ -11,7 +11,7 @@ export const surveyService = {
     }
 
     const promise = api
-      .get("/surveys", {
+      .get("/surveys-new", {
         page,
         limit,
         ...(type ? { type } : {}),
@@ -31,18 +31,18 @@ export const surveyService = {
   },
 
     async fetchSurveyById(id: string) {
-        return api.get(`/surveys/${id}`);
+        return api.get(`/surveys-new/${id}`);
     },
 
     async createSurvey(data: any) {
-        return api.post('/surveys', data);
+        return api.post('/surveys-new', data);
     },
 
     async updateSurvey(id: string, data: any) {
-        return api.put(`/surveys/${id}`, data);
+        return api.put(`/surveys-new/${id}`, data);
     },
 
     async deleteSurvey(id: string) {
-        return api.delete(`/surveys/${id}`);
+        return api.delete(`/surveys-new/${id}`);
     }
 };

@@ -12,13 +12,13 @@ export const feedBacksSevice = {
         if (unit_type) params.unit_type = unit_type;
 
         if (unit && unit.length > 100) {
-            return api.post('/feedbacks/list', params);
+            return api.post('/feedbacks-new/list', params);
         }
-        return api.get('/feedbacks', params);
+        return api.get('/feedbacks-new', params);
     },
 
     async fetchFeedBackById(id: string) {
-        return api.get(`/feedbacks/${id}`);
+        return api.get(`/feedbacks-new/${id}`);
     },
 
     async fetchStats(payload: { startDate: string, endDate: string }, type?: string, survey_key?: string | string[], unit?: string, unit_type?: string) {
@@ -32,9 +32,9 @@ export const feedBacksSevice = {
         if (unit_type) params.unit_type = unit_type;
 
         if (unit && unit.length > 100) {
-            return api.post('/feedbacks/stats', params);
+            return api.post('/feedbacks-new/stats', params);
         }
-        return api.get('/feedbacks/stats', params);
+        return api.get('/feedbacks-new/stats', params);
     },
 
     async fetchFeedBacksByType(type: string, startDate?: string, endDate?: string, survey_key?: string, unit?: string, unit_type?: string) {
@@ -44,9 +44,9 @@ export const feedBacksSevice = {
         if (unit_type) params.unit_type = unit_type;
 
         if (unit && unit.length > 100) {
-            return api.post('/feedbacks/list', params);
+            return api.post('/feedbacks-new/list', params);
         }
-        return api.get(`/feedbacks`, params);
+        return api.get(`/feedbacks-new`, params);
     },
     async fetchCompare(survey_key?: string, type?: string, unit?: string, unit_type?: string) {
         const params: any = {};
@@ -56,12 +56,12 @@ export const feedBacksSevice = {
         if (unit_type) params.unit_type = unit_type;
 
         if (unit && unit.length > 100) {
-            return api.post('/feedbacks/compare', params);
+            return api.post('/feedbacks-new/compare', params);
         }
-        return api.get(`/feedbacks/compare`, params);
+        return api.get(`/feedbacks-new/compare`, params);
     },
 
     async deleteFeedBack(id: string) {
-        return api.delete(`/feedbacks/${id}`);
+        return api.delete(`/feedbacks-new/${id}`);
     }
 };

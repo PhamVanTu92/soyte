@@ -277,7 +277,7 @@ export const api = {
   async getEvaluateDashboard(survey_key?: string) {
     const params: any = {};
     if (survey_key) params.survey_key = survey_key;
-    return this.get("/feedbacks/evaluate-dashboard", params);
+    return this.get("/feedbacks-new/evaluate-dashboard", params);
   },
 
   // Banners

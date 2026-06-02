@@ -23,7 +23,7 @@ export default function EvaluationTable() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        const res = await api.get(`/forms/${id}`);
+        const res = await api.get(`/forms-new/${id}`);
 
         setFormType(res.data.type);
         setFormData(res.data);

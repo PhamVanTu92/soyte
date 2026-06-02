@@ -31,7 +31,7 @@ const TemplateQrView: React.FC = () => {
     const fetchForm = async () => {
       try {
         setLoading(true);
-        const res = await api.get(`/forms/${id}`);
+        const res = await api.get(`/forms-new/${id}`);
         setForm(res.data);
       } catch (error) {
         console.error("Fetch form error:", error);
