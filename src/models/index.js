@@ -167,22 +167,12 @@ db.SocialFacility.belongsToMany(db.Survey, {
   as: 'surveys',
 });
 
-// --- Form chuẩn hóa (Form → FormSection → FormQuestion → FormOption) ---
-// Các associate() trong từng model đã khai báo belongsTo/hasMany rồi.
-// Chỉ thêm những chiều chưa được khai báo trong associate():
+// --- Form chuẩn hóa ---
+// FormSection/FormQuestion/FormOption đã tự định nghĩa associate() rồi.
+// Form model không có associate() → chỉ khai báo chiều ngược duy nhất này:
 db.Form.hasMany(db.FormSection, {
   foreignKey: 'form_id',
   as: 'sections',
-  onDelete: 'CASCADE',
-});
-db.FormSection.hasMany(db.FormQuestion, {
-  foreignKey: 'section_id',
-  as: 'questions',
-  onDelete: 'CASCADE',
-});
-db.FormQuestion.hasMany(db.FormOption, {
-  foreignKey: 'question_id',
-  as: 'options',
   onDelete: 'CASCADE',
 });
 
