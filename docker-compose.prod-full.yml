@@ -20,7 +20,7 @@ services:
     container_name: soyte-backend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${BACKEND_PORT:-3000}:3000"   # reverse proxy ngoài trỏ vào đây
+      - "127.0.0.1:${BACKEND_PORT:-3000}:3000"
     environment:
       PORT: 3000
       NODE_ENV: production
@@ -55,18 +55,20 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  # ── Frontend SPA (Nginx tĩnh) ─────────────────────────────────────
+  # ── Frontend SPA ──────────────────────────────────────────────────
   frontend:
     build:
       context: ./soyte-main
-      dockerfile: Dockerfile        # Dùng Dockerfile gốc (nginx tĩnh)
+      dockerfile: Dockerfile.combined
       args:
-        BUILD_MODE: golive          # mode=golive → load .env.golive → VITE_API_URL=https://backend.suckhoethudo.vn
+        BUILD_MODE:      golive                              # → npm run build:golive
+        VITE_API_URL:    https://backend.suckhoethudo.vn    # URL backend Production
+        VITE_PUBLIC_URL: https://suckhoethudo.vn            # URL frontend Production
     image: soyte-frontend:latest
     container_name: soyte-frontend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"    # reverse proxy ngoài trỏ vào đây
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
 
 volumes:
   uploads_data:

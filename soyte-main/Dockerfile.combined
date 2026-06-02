@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────
-# Dockerfile.combined
-# Build frontend + serve qua Nginx với proxy /api/ → backend
-# Dùng trong docker-compose.*-full.yml, KHÔNG thay thế Dockerfile gốc
+# Dockerfile.combined — Frontend SPA
+# Nhận VITE_* qua build ARG → tự tạo .env file → build Vite
+# File .env.dev / .env.golive bị gitignore nên KHÔNG dùng git để deploy
 # ─────────────────────────────────────────────────────────────────
 
 # Stage 1: Build
@@ -14,18 +14,29 @@ RUN npm ci
 
 COPY . .
 
-# BUILD_MODE: uat → build:dev (.env.dev), prod → build:golive (.env.golive)
-ARG BUILD_MODE=uat
-RUN if [ "$BUILD_MODE" = "prod" ] || [ "$BUILD_MODE" = "golive" ]; \
+# ── Build mode: dev (UAT) hoặc golive (Production) ───────────────
+ARG BUILD_MODE=dev
+
+# ── Biến môi trường Vite (baked vào bundle lúc build) ────────────
+ARG VITE_API_URL=http://localhost:3001
+ARG VITE_PUBLIC_URL=http://localhost:3002
+
+# Tạo file .env tương ứng với BUILD_MODE từ ARG
+# (thay thế file gitignored — không cần tạo thủ công trên server)
+RUN ENV_FILE=".env.${BUILD_MODE}" && \
+    echo "VITE_API_URL=${VITE_API_URL}" > $ENV_FILE && \
+    echo "VITE_PUBLIC_URL=${VITE_PUBLIC_URL}" >> $ENV_FILE && \
+    echo "[build] $ENV_FILE:" && cat $ENV_FILE
+
+RUN if [ "$BUILD_MODE" = "golive" ]; \
     then npm run build:golive; \
     else npm run build:dev; \
     fi
 
-# Stage 2: Nginx với reverse proxy config
+# Stage 2: Nginx tĩnh
 FROM nginx:1.27-alpine AS runner
 
-# Dùng nginx.combined.conf thay vì nginx.conf gốc
-COPY nginx.combined.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80

@@ -2,9 +2,8 @@ version: '3.9'
 
 # ── UAT Full Stack — Backend + Frontend chung 1 compose ──────────
 #
-# Backend  : http://160.30.252.42:3001  (API)
+# Backend  : http://160.30.252.42:3001  (API + Swagger)
 # Frontend : http://160.30.252.42:3002  (SPA)
-# Swagger  : http://160.30.252.42:3001/api-docs
 #
 # Dùng:
 #   docker-compose -f docker-compose.uat-full.yml --env-file .env.uat up -d --build
@@ -56,13 +55,15 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  # ── Frontend SPA (Nginx tĩnh, không proxy) ───────────────────────
+  # ── Frontend SPA ──────────────────────────────────────────────────
   frontend:
     build:
       context: ./soyte-main
-      dockerfile: Dockerfile        # Dùng Dockerfile gốc (nginx tĩnh)
+      dockerfile: Dockerfile.combined
       args:
-        BUILD_MODE: dev             # mode=dev → load .env.dev → VITE_API_URL=http://160.30.252.42:3001
+        BUILD_MODE:      dev                          # → npm run build:dev
+        VITE_API_URL:    http://160.30.252.42:3001    # URL backend UAT
+        VITE_PUBLIC_URL: http://160.30.252.42:3002    # URL frontend UAT
     image: soyte-frontend:uat
     container_name: soyte-frontend-uat
     restart: unless-stopped
