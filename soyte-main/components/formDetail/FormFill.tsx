@@ -38,29 +38,29 @@ const LikertInput: React.FC<{
 }> = ({ qKey, options, value, onChange, error }) => {
   const opts = options.length > 0 ? options : DEFAULT_LIKERT;
   return (
-    <div className={`flex flex-wrap gap-1.5 mt-2 ${error ? "ring-2 ring-red-300 rounded-xl p-1" : ""}`}>
+    <div className={`flex flex-wrap gap-2 mt-3 ${error ? "ring-2 ring-red-300 rounded-xl p-1.5" : ""}`}>
       {opts.map((o) => {
         const isZero = o.option_key === "0";
         const selected = value === o.option_key;
         return (
           <label key={o.option_key}
-            className="flex-1 min-w-[56px] text-center cursor-pointer select-none"
+            className="flex-1 min-w-[72px] text-center cursor-pointer select-none"
             title={o.label}>
             <input type="radio" name={qKey} value={o.option_key} className="hidden"
               checked={selected} onChange={() => onChange(o.option_key)} />
-            <div className={`px-1 py-2 rounded-lg border text-[11px] leading-tight transition-all
+            <div className={`px-2 py-3 rounded-xl border-2 text-xs leading-tight transition-all
               ${selected
                 ? isZero
-                  ? "bg-slate-500 border-slate-500 text-white"
+                  ? "bg-slate-500 border-slate-500 text-white shadow-md"
                   : "bg-primary-600 border-primary-600 text-white shadow-md shadow-primary-100"
                 : isZero
-                  ? "border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-400"
+                  ? "border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-400 hover:bg-slate-100"
                   : "border-slate-200 bg-white text-slate-600 hover:border-primary-400 hover:bg-primary-50"
               }`}>
-              <div className={`text-lg font-black leading-none mb-0.5 ${selected ? "text-white" : isZero ? "text-slate-400" : "text-slate-700"}`}>
+              <div className={`text-2xl font-black leading-none mb-1 ${selected ? "text-white" : isZero ? "text-slate-400" : "text-primary-600"}`}>
                 {o.option_key}
               </div>
-              <div className="truncate px-0.5 leading-tight">{o.label}</div>
+              <div className="text-[11px] leading-tight px-0.5">{o.label}</div>
             </div>
           </label>
         );
@@ -88,21 +88,21 @@ const ChoiceInput: React.FC<{
     multi ? (Array.isArray(value) && value.includes(optKey)) : value === optKey;
 
   return (
-    <div className={`flex flex-col gap-2 mt-2 ${error ? "ring-2 ring-red-300 rounded-xl p-1" : ""}`}>
+    <div className={`flex flex-col gap-2.5 mt-3 ${error ? "ring-2 ring-red-300 rounded-xl p-2" : ""}`}>
       {options.map((o) => {
         const sel = isSelected(o.option_key);
         return (
           <label key={o.option_key}
-            className={`flex items-start gap-3 px-4 py-2.5 border rounded-xl cursor-pointer transition-all text-sm
+            className={`flex items-center gap-3 px-4 py-3.5 border-2 rounded-xl cursor-pointer transition-all text-[15px]
               ${sel
-                ? "bg-primary-50 border-primary-400 text-primary-900"
+                ? "bg-primary-50 border-primary-500 text-primary-900 font-medium"
                 : "bg-white border-slate-200 text-slate-700 hover:border-primary-300 hover:bg-slate-50"
               }`}>
             <input
               type={multi ? "checkbox" : "radio"}
               name={qKey} value={o.option_key}
               checked={sel} onChange={() => toggle(o.option_key)}
-              className="mt-0.5 flex-shrink-0 accent-[#0284c7]"
+              className="w-4 h-4 flex-shrink-0 accent-[#0284c7]"
             />
             <span className="leading-relaxed">{o.label}</span>
           </label>
@@ -135,6 +135,11 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
   const [errors,       setErrors]       = useState<Record<string, boolean>>({});
   const [submitting,   setSubmitting]   = useState(false);
   const [openSection,  setOpenSection]  = useState<number | null>(0);
+
+  /* Scroll lên đầu trang khi form load */
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   const setAnswer = useCallback((key: string, val: any) => {
     setAnswers(prev => ({ ...prev, [key]: val }));
@@ -325,19 +330,19 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
 
     return (
       <div key={q.question_key}
-        className={`py-4 border-b border-dashed border-slate-100 last:border-0 ${hasErr ? "bg-red-50/40 -mx-5 px-5 rounded-xl" : ""}`}>
+        className={`py-5 border-b border-dashed border-slate-100 last:border-0 ${hasErr ? "bg-red-50/40 -mx-5 px-5 rounded-xl" : ""}`}>
         {/* Label */}
-        <div className="flex gap-2 mb-1">
-          <span className="font-mono text-[11px] text-primary-600 font-bold flex-shrink-0 pt-0.5">
+        <div className="flex gap-2.5 mb-1">
+          <span className="font-mono text-xs text-primary-500 font-bold flex-shrink-0 pt-1 min-w-[28px]">
             {q.question_key}
           </span>
-          <span className="text-[13px] text-slate-700 leading-snug">
+          <span className="text-[15px] text-slate-800 leading-relaxed font-medium">
             {q.label}
             {q.required && <span className="text-red-500 ml-1">*</span>}
           </span>
         </div>
         {hasErr && (
-          <p className="text-[11px] text-red-500 mb-1 ml-8">Vui lòng trả lời câu hỏi này</p>
+          <p className="text-xs text-red-500 mb-1 ml-9">Vui lòng trả lời câu hỏi này</p>
         )}
 
         {/* Input by type */}
@@ -352,11 +357,11 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
         )}
         {q.type === "textarea" && (
           <textarea
-            rows={3}
+            rows={4}
             value={val ?? ""}
             onChange={e => setAnswer(q.question_key, e.target.value)}
             placeholder="Nhập câu trả lời của bạn…"
-            className={`mt-2 w-full px-3 py-2.5 text-sm border rounded-xl resize-y min-h-[72px] focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+            className={`mt-3 ml-9 w-[calc(100%-2.25rem)] px-4 py-3 text-[15px] border-2 rounded-xl resize-y min-h-[90px] focus:outline-none focus:ring-2 focus:ring-primary-300 transition
               ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
           />
         )}
@@ -365,7 +370,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
             value={val ?? ""}
             onChange={e => setAnswer(q.question_key, e.target.value)}
             placeholder="Nhập câu trả lời…"
-            className={`mt-2 w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+            className={`mt-3 ml-9 w-[calc(100%-2.25rem)] px-4 py-3 text-[15px] border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
               ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
           />
         )}
@@ -374,7 +379,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
             value={val ?? ""}
             onChange={e => setAnswer(q.question_key, e.target.value)}
             placeholder="0"
-            className={`mt-2 w-40 px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+            className={`mt-3 ml-9 w-48 px-4 py-3 text-[15px] border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
               ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
           />
         )}
@@ -382,7 +387,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
           <input type="date"
             value={val ?? ""}
             onChange={e => setAnswer(q.question_key, e.target.value)}
-            className={`mt-2 px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+            className={`mt-3 ml-9 px-4 py-3 text-[15px] border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
               ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
           />
         )}
@@ -460,14 +465,25 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
               {/* Section header */}
               <button
                 type="button"
-                onClick={() => setOpenSection(prev => prev === si ? null : si)}
-                className="w-full flex items-center justify-between px-5 py-3.5 bg-primary-600 text-white hover:bg-primary-700 transition-colors text-left">
-                <span className="font-semibold text-sm">{sec.title}</span>
+                onClick={() => {
+                  setOpenSection(prev => {
+                    const next = prev === si ? null : si;
+                    if (next !== null) {
+                      // Scroll về đầu section sau khi render
+                      requestAnimationFrame(() => {
+                        sectionRefs.current[next]?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      });
+                    }
+                    return next;
+                  });
+                }}
+                className="w-full flex items-center justify-between px-5 py-4 bg-primary-600 text-white hover:bg-primary-700 transition-colors text-left">
+                <span className="font-bold text-base">{sec.title}</span>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-[11px] font-mono bg-white/20 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-mono bg-white/20 px-2.5 py-0.5 rounded-full">
                     {answeredInSection}/{sec.questions.length}
                   </span>
-                  <i className={`pi ${isOpen ? "pi-chevron-up" : "pi-chevron-down"} text-xs opacity-80`} />
+                  <i className={`pi ${isOpen ? "pi-chevron-up" : "pi-chevron-down"} text-sm opacity-80`} />
                 </div>
               </button>
 
@@ -480,7 +496,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
                   </div>
                 ) : (
                   /* Layout 1 cột cho section khảo sát */
-                  <div className="px-5 py-2">
+                  <div className="px-6 py-3">
                     {sec.questions.map(q => renderQuestion(q, si))}
                   </div>
                 )
