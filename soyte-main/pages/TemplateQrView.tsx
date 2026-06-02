@@ -44,7 +44,9 @@ const TemplateQrView: React.FC = () => {
   }, [id]);
 
   const publicUrl = `${window.location.origin}/forms/${id}${surveyKey ? `?survey_key=${surveyKey}` : ''}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(publicUrl)}`;
+  // Link nhúng trong mã QR có đánh dấu src=qr để phân biệt phiếu nộp qua QR vs website
+  const qrTargetUrl = `${window.location.origin}/forms/${id}?src=qr${surveyKey ? `&survey_key=${surveyKey}` : ''}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrTargetUrl)}`;
 
   const handleDownload = async () => {
     try {

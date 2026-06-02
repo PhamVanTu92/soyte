@@ -51,6 +51,8 @@ const getUnitFromInfo = (info) => {
 const createFeedback = async (feedbackData) => {
   const { form_id, creator_name, info, type, submission_data, user_id } = feedbackData;
   let { survey_key, status } = feedbackData;
+  // Kênh nộp phiếu: 'qr' nếu mở từ link QR (?src=qr), còn lại là 'web'
+  const source = feedbackData.source === 'qr' ? 'qr' : 'web';
 
   if (!survey_key) {
     const activeSurvey = await db.Survey.findOne({
@@ -110,6 +112,7 @@ const createFeedback = async (feedbackData) => {
       status,
       user_id,
       survey_key,
+      source,
       sections: sectionsToCreate,
     }, {
       include: [{

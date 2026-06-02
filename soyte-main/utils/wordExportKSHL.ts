@@ -147,8 +147,8 @@ export const exportKSHLToWord = async (
                     children: [
                         mkCell('STT', { bold: true, align: AlignmentType.CENTER, rowSpan: 2 }),
                         mkCell(unitLabel, { bold: true, align: AlignmentType.CENTER, rowSpan: 2 }),
-                        mkCell('KQ tự khảo sát của đơn vị', { bold: true, align: AlignmentType.CENTER, colSpan: 3 }),
-                        mkCell('KQ khảo sát qua QR của SYT', { bold: true, align: AlignmentType.CENTER, colSpan: 3 }),
+                        mkCell('KQ qua Website', { bold: true, align: AlignmentType.CENTER, colSpan: 3 }),
+                        mkCell('KQ qua mã QR', { bold: true, align: AlignmentType.CENTER, colSpan: 3 }),
                     ]
                 }),
                 new TableRow({
@@ -254,8 +254,8 @@ export const exportKSHLToWord = async (
                     children: [
                         mkCell('STT', { bold: true, align: AlignmentType.CENTER, rowSpan: 3, size: 18 }),
                         mkCell(unitLabel, { bold: true, align: AlignmentType.CENTER, rowSpan: 3, size: 18 }),
-                        mkCell('KQ tự khảo sát của đơn vị', { bold: true, align: AlignmentType.CENTER, colSpan: 4, size: 18 }),
-                        mkCell('KQ khảo sát qua QR của SYT', { bold: true, align: AlignmentType.CENTER, colSpan: 4, size: 18 }),
+                        mkCell('KQ qua Website', { bold: true, align: AlignmentType.CENTER, colSpan: 4, size: 18 }),
+                        mkCell('KQ qua mã QR', { bold: true, align: AlignmentType.CENTER, colSpan: 4, size: 18 }),
                     ]
                 }),
                 new TableRow({

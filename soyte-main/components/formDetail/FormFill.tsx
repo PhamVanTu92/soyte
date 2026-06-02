@@ -118,9 +118,10 @@ interface Props {
   type?: string;
   formJson: FormJson;
   survey_key?: string | null;
+  source?: string;
 }
 
-const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
+const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "web" }) => {
   const toast     = useRef<Toast>(null);
   const navigate  = useNavigate();
   const topRef    = useRef<HTMLDivElement>(null);
@@ -224,6 +225,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
         user_id:         userInfo.id || null,
         form_id:         Number(id),
         survey_key:      survey_key || null,
+        source:          source === "qr" ? "qr" : "web",
         creator_name:    creatorName.trim() || "Ẩn danh",
         type:            type || "evaluate",
         status:          "pending",

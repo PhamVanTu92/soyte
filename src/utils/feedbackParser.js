@@ -98,7 +98,7 @@ const DEFAULT_FORM_TYPE_MAP = {
  *   surveyType: string,       // 'noi_tru' | 'ngoai_tru' | 'tiem_chung' | 'unknown'
  *   facilityKey: string|null, // VD: "bv-hong-ngoc-yen-ninh"
  *   facilityName: string|null,// VD: "BVĐK Hồng Ngọc"
- *   isQR: boolean,            // true nếu quét QR (user_id = null)
+ *   isQR: boolean,            // true nếu nộp qua QR (source='qr'); dữ liệu cũ: suy luận từ user_id
  *   submittedBy: string|null, // VD: "Người bệnh tự điền"
  *   respondentType: string|null, // VD: "Người bệnh"
  *   surveyDate: string|null,  // ISO date string từ info
@@ -121,7 +121,8 @@ const parseFeedbackRow = (row, formTypeMap = DEFAULT_FORM_TYPE_MAP) => {
     surveyType,
     facilityKey: facility?.facilityKey ?? null,
     facilityName: facility?.facilityName ?? null,
-    isQR: !row.user_id,
+    // Ưu tiên cột source mới ('qr'|'web'); dữ liệu cũ (NULL) → suy luận theo user_id
+    isQR: row.source ? row.source === 'qr' : !row.user_id,
     submittedBy: getInfoField(info, 3),   // key "3": loại người điền
     respondentType: getInfoField(info, 4), // key "4": người bệnh / người nhà
     surveyDate: getInfoField(info, 2),     // key "2": ngày khảo sát

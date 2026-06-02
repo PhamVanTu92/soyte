@@ -9,6 +9,8 @@ export default function FormDetail() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const survey_key = searchParams.get("survey_key");
+  // Kênh nộp: 'qr' nếu mở từ mã QR (?src=qr), còn lại là website
+  const source = searchParams.get("src") === "qr" ? "qr" : "web";
 
   const [formData, setFormData] = useState<any>(null);
   const [loading,  setLoading]  = useState(true);
@@ -45,6 +47,7 @@ export default function FormDetail() {
         type={formType}
         formJson={legacyData}
         survey_key={survey_key}
+        source={source}
       />
     );
   }
@@ -56,6 +59,7 @@ export default function FormDetail() {
       type={formType || "evaluate"}
       formJson={formData}
       survey_key={survey_key}
+      source={source}
     />
   );
 }

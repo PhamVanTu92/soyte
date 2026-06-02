@@ -108,13 +108,13 @@ export const exportKSHLToPDF = async (
             let head = [];
             if (isAppendix) {
                 head = [
-                    [{ content: 'STT', rowSpan: 3 }, { content: unitLabel, rowSpan: 3 }, { content: 'KQ tự khảo sát của đơn vị', colSpan: 4 }, { content: 'KQ khảo sát qua QR của SYT', colSpan: 4 }],
+                    [{ content: 'STT', rowSpan: 3 }, { content: unitLabel, rowSpan: 3 }, { content: 'KQ qua Website', colSpan: 4 }, { content: 'KQ qua mã QR', colSpan: 4 }],
                     [{ content: `CSHL\n${type1}`, rowSpan: 2 }, { content: `CSHL\n${type2}`, rowSpan: 2 }, { content: 'TS phiếu KS', colSpan: 2 }, { content: `CSHL\n${type1}`, rowSpan: 2 }, { content: `CSHL\n${type2}`, rowSpan: 2 }, { content: 'TS phiếu KS', colSpan: 2 }],
                     [type1, type2, type1, type2]
                 ];
             } else {
                 head = [
-                    [{ content: 'STT', rowSpan: 2 }, { content: unitLabel, rowSpan: 2 }, { content: 'KQ tự khảo sát của đơn vị', colSpan: 3 }, { content: 'KQ khảo sát qua QR của SYT', colSpan: 3 }],
+                    [{ content: 'STT', rowSpan: 2 }, { content: unitLabel, rowSpan: 2 }, { content: 'KQ qua Website', colSpan: 3 }, { content: 'KQ qua mã QR', colSpan: 3 }],
                     headerTongHop
                 ];
             }

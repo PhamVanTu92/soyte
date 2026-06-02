@@ -105,7 +105,7 @@ const fetchAllFeedbacksForReport = async (queryOptions, type) => {
   const allRows = await db.Feedback.findAll({
     where,
     order: [['created_at', 'ASC']], 
-    attributes: ['id', 'info', 'form_id', 'user_id', 'created_at', 'type', 'survey_key'],
+    attributes: ['id', 'info', 'form_id', 'user_id', 'created_at', 'type', 'survey_key', 'source'],
     include: [{
       model: db.FeedbackSection,
       as: 'sections',
@@ -330,7 +330,7 @@ const getReportKSHL = async (query) => {
 
     const rawFeedbacks = await db.Feedback.findAll({
         where,
-        attributes: ['id', 'info', 'form_id', 'user_id', 'created_at', 'type', 'survey_key'],
+        attributes: ['id', 'info', 'form_id', 'user_id', 'created_at', 'type', 'survey_key', 'source'],
         raw: true
     });
 
@@ -686,7 +686,7 @@ const getReportGSAT = async (query, userContext = {}) => {
     // ── 2. Fetch feedbacks theo survey_key ─────────────────────────
     const rawFeedbacks = await db.Feedback.findAll({
         where: { type: 'evaluate', survey_key: surveyId },
-        attributes: ['id', 'info', 'form_id', 'user_id', 'created_at', 'type', 'survey_key'],
+        attributes: ['id', 'info', 'form_id', 'user_id', 'created_at', 'type', 'survey_key', 'source'],
         raw: true,
     });
 

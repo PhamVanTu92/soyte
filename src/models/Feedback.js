@@ -68,6 +68,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
       comment: 'Key của survey liên kết với feedback này',
+    },
+    source: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+      comment: "Kênh nộp phiếu: 'qr' (quét QR) | 'web' (website)",
     }
   }, {
     sequelize,

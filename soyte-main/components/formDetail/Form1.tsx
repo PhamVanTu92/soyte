@@ -420,7 +420,7 @@ const TableSection = memo(function TableSection({
   );
 });
 
-export default function BieuMau1Table({ id, type, formJson, survey_key }: any) {
+export default function BieuMau1Table({ id, type, formJson, survey_key, source = "web" }: any) {
   const toast = useRef<Toast>(null);
   const navigate = useNavigate();
 
@@ -706,6 +706,7 @@ export default function BieuMau1Table({ id, type, formJson, survey_key }: any) {
         user_id: userId,
         form_id: Number(id),
         survey_key: survey_key,
+        source: source === "qr" ? "qr" : "web",
         creator_name: customerName,
         info: {
           title: name,

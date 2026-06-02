@@ -44,8 +44,8 @@ export const TablePreview = ({
                                         <tr>
                                             <th rowSpan={2} className="border border-slate-600 p-3 text-center align-middle font-semibold w-12">STT</th>
                                             <th rowSpan={2} className="border border-slate-600 p-3 align-middle font-semibold whitespace-nowrap">{unitLabel}</th>
-                                            <th colSpan={3} className="border border-slate-600 p-3 text-center font-semibold">KQ tự khảo sát</th>
-                                            <th colSpan={3} className="border border-slate-600 p-3 text-center font-semibold">KQ qua QR của SYT</th>
+                                            <th colSpan={3} className="border border-slate-600 p-3 text-center font-semibold">KQ qua Website</th>
+                                            <th colSpan={3} className="border border-slate-600 p-3 text-center font-semibold">KQ qua mã QR</th>
                                         </tr>
                                         <tr>
                                             {headerTongHop.map((header, idx) => (
@@ -58,8 +58,8 @@ export const TablePreview = ({
                                         <tr>
                                             <th rowSpan={3} className="border border-slate-600 p-3 text-center align-middle font-semibold w-12">STT</th>
                                             <th rowSpan={3} className="border border-slate-600 p-3 align-middle font-semibold whitespace-nowrap">{unitLabel}</th>
-                                            <th colSpan={4} className="border border-slate-600 p-3 text-center font-semibold">KQ tự khảo sát của đơn vị</th>
-                                            <th colSpan={4} className="border border-slate-600 p-3 text-center font-semibold">KQ khảo sát qua QR của SYT</th>
+                                            <th colSpan={4} className="border border-slate-600 p-3 text-center font-semibold">KQ qua Website</th>
+                                            <th colSpan={4} className="border border-slate-600 p-3 text-center font-semibold">KQ qua mã QR</th>
                                         </tr>
                                         <tr>
                                             <th rowSpan={2} className="border border-slate-600 p-2 text-center align-middle font-semibold leading-tight">CSHL<br />{type1}</th>
