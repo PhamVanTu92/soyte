@@ -62,7 +62,7 @@ services:
       dockerfile: Dockerfile.combined
       args:
         BUILD_MODE:      golive                              # → npm run build:golive
-        VITE_API_URL:    https://backend.suckhoethudo.vn    # URL backend Production
+        VITE_API_URL:    https://backend.suckhoethudo.vn/api  # URL backend Production
         VITE_PUBLIC_URL: https://suckhoethudo.vn            # URL frontend Production
     image: soyte-frontend:latest
     container_name: soyte-frontend

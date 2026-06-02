@@ -62,7 +62,7 @@ services:
       dockerfile: Dockerfile.combined
       args:
         BUILD_MODE:      dev                          # → npm run build:dev
-        VITE_API_URL:    http://160.30.252.42:3001    # URL backend UAT
+        VITE_API_URL:    http://160.30.252.42:3001/api  # URL backend UAT
         VITE_PUBLIC_URL: http://160.30.252.42:3002    # URL frontend UAT
     image: soyte-frontend:uat
     container_name: soyte-frontend-uat
