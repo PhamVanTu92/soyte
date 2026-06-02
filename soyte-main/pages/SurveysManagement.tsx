@@ -1,6 +1,8 @@
 import AdminLayout from "../components/AdminLayout";
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { surveyService } from "../services/surveyService";
+import { surveyNewService } from "../services/surveyNewService";
+import { socialFacilitiesService } from "../services/socialFacilitiesService";
 import { formService } from "../services/formService";
 import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
@@ -12,8 +14,9 @@ import { Dialog } from "primereact/dialog";
 import { InputTextarea } from "primereact/inputtextarea";
 import { InputSwitch } from "primereact/inputswitch";
 import { Calendar } from "primereact/calendar";
+import { MultiSelect } from "@/components/prime";
 import { Toast } from "@/components/prime";
-import { Plus, ListChecks } from "lucide-react";
+import { Plus, ListChecks, Building2 } from "lucide-react";
 
 const ALLOWED_TYPES = ["evaluate", "reflect"] as const;
 type FormType = (typeof ALLOWED_TYPES)[number];
@@ -28,6 +31,9 @@ const SurveysManagement: React.FC = () => {
     return <Navigate to="/admin" replace />;
   }
 
+  /** Chế độ "Giám sát chất lượng" — dùng API mới + hỗ trợ cơ sở */
+  const isEvaluate = type === "evaluate";
+
   const [surveys, setSurveys] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [totalRecords, setTotalRecords] = useState(0);
@@ -39,32 +45,48 @@ const SurveysManagement: React.FC = () => {
 
   // Modal state
   const [surveyDialog, setSurveyDialog] = useState(false);
-    const [survey, setSurvey] = useState<any>({
-        name: "",
-        description: "",
-        status: true,
-        form_ids: [],
-        dateFrom: null,
-        dateTo: null,
-    });
+  const [survey, setSurvey] = useState<any>({
+    name: "",
+    description: "",
+    status: true,
+    form_ids: [],
+    dateFrom: null,
+    dateTo: null,
+  });
   const [allForms, setAllForms] = useState<any[]>([]);
   const [selectedForms, setSelectedForms] = useState<any[]>([]);
+
+  // ── Cơ sở KCB (chỉ cho isEvaluate) ──────────────────────────────
+  const [allFacilities, setAllFacilities] = useState<any[]>([]);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(false);
+  const [selectedFacilityIds, setSelectedFacilityIds] = useState<string[]>([]);
 
   const fetchSurveys = async () => {
     try {
       setLoading(true);
       const status =
-        statusFilter === "all"
-          ? undefined
-          : statusFilter === "active";
-      const data = await surveyService.fetchSurveys(
-        lazyParams.page,
-        lazyParams.rows,
-        type,
-        status,
-        debouncedSearch.trim() || undefined,
-      );
-      let list = data?.items || data || [];
+        statusFilter === "all" ? undefined : statusFilter === "active";
+
+      let data: any;
+      if (isEvaluate) {
+        data = await surveyNewService.fetchSurveys(
+          lazyParams.page,
+          lazyParams.rows,
+          type,
+          status,
+          debouncedSearch.trim() || undefined,
+        );
+      } else {
+        data = await surveyService.fetchSurveys(
+          lazyParams.page,
+          lazyParams.rows,
+          type,
+          status,
+          debouncedSearch.trim() || undefined,
+        );
+      }
+
+      const list = data?.items || data || [];
       setSurveys(list);
       setTotalRecords(data?.total || list.length);
     } catch (error) {
@@ -88,12 +110,26 @@ const SurveysManagement: React.FC = () => {
     }
   };
 
+  const fetchFacilities = async () => {
+    if (!isEvaluate) return;
+    try {
+      setFacilitiesLoading(true);
+      const list = await socialFacilitiesService.fetchAllPages();
+      setAllFacilities(list);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setFacilitiesLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchSurveys();
   }, [lazyParams.page, lazyParams.rows, type, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     fetchForms();
+    if (isEvaluate) fetchFacilities();
   }, [type]);
 
   useEffect(() => {
@@ -118,6 +154,7 @@ const SurveysManagement: React.FC = () => {
   const openNew = () => {
     setSurvey({ name: "", description: "", status: true, form_ids: [], dateFrom: null, dateTo: null });
     setSelectedForms([]);
+    setSelectedFacilityIds([]);
     setSurveyDialog(true);
   };
 
@@ -136,13 +173,13 @@ const SurveysManagement: React.FC = () => {
     }
 
     const formatDate = (date: any) => {
-        if (!date) return null;
-        if (typeof date === 'string') return date;
-        const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+      if (!date) return null;
+      if (typeof date === "string") return date;
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
     };
 
     const payload = {
@@ -151,78 +188,58 @@ const SurveysManagement: React.FC = () => {
       dateFrom: formatDate(survey.dateFrom),
       dateTo: formatDate(survey.dateTo),
       form_ids: selectedForms.map((f) => f.id),
+      ...(isEvaluate ? { facility_ids: selectedFacilityIds } : {}),
     };
 
     try {
       const surveyId = survey.key || survey.id;
-      if (surveyId) {
-        const res = await surveyService.updateSurvey(surveyId, payload);
-        if (!res?.message) {
-          toast.current?.show({
-            severity: "success",
-            summary: "Thành công",
-            detail: "Đã cập nhật cuộc khảo sát",
-          });
+
+      if (isEvaluate) {
+        if (surveyId) {
+          await surveyNewService.updateSurvey(surveyId, payload);
+        } else {
+          await surveyNewService.createSurvey(payload);
         }
       } else {
-        const res = await surveyService.createSurvey(payload);
-        if (!res?.message) {
-          toast.current?.show({
-            severity: "success",
-            summary: "Thành công",
-            detail: "Đã tạo cuộc khảo sát mới",
-          });
+        if (surveyId) {
+          await surveyService.updateSurvey(surveyId, payload);
+        } else {
+          await surveyService.createSurvey(payload);
         }
       }
+
+      toast.current?.show({
+        severity: "success",
+        summary: "Thành công",
+        detail: surveyId ? "Đã cập nhật cuộc khảo sát" : "Đã tạo cuộc khảo sát mới",
+      });
       setSurveyDialog(false);
       fetchSurveys();
     } catch (error: any) {
       console.error(error);
-      if (error.message && error.message.includes("API Error")) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Lỗi",
-          detail: "Không thể lưu cuộc khảo sát",
-        });
-      }
+      toast.current?.show({
+        severity: "error",
+        summary: "Lỗi",
+        detail: "Không thể lưu cuộc khảo sát",
+      });
     }
   };
 
   const editSurvey = (rowData: any) => {
     setSurvey({ ...rowData });
-    // Handle form_ids as array of objects with form_id field
+    // Pre-select forms
     const selected = allForms.filter((f) =>
       (rowData.form_ids || []).some((item: any) => item.form_id === f.id),
     );
     setSelectedForms(selected);
-    setSurveyDialog(true);
-  };
-
-  const toggleStatus = async (rowData: any) => {
-    try {
-      const newStatus = !rowData.status;
-      const res = await surveyService.updateSurvey(rowData.id, {
-        ...rowData,
-        status: newStatus,
-      });
-      if (!res?.message) {
-        toast.current?.show({
-          severity: "success",
-          summary: "Thành công",
-          detail: "Đã cập nhật trạng thái",
-        });
-      }
-      fetchSurveys();
-    } catch (error: any) {
-      console.error(error);
-      if (error.message && error.message.includes("API Error")) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Lỗi",
-          detail: "Không thể cập nhật trạng thái",
-        });
-      }
+    // Pre-select facilities (from survey.facilities if present)
+    if (isEvaluate) {
+      const facIds = (rowData.facilities || []).map((fac: any) =>
+        String(fac.id ?? fac.facility_id ?? fac),
+      );
+      setSelectedFacilityIds(facIds);
     }
+    setSurveyDialog(true);
   };
 
   const actionBodyTemplate = (rowData: any) => {
@@ -242,10 +259,26 @@ const SurveysManagement: React.FC = () => {
   const statusBodyTemplate = (rowData: any) => {
     return (
       <div
-        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-block ${rowData.status ? "bg-green-50 text-green-600 border border-green-100" : "bg-slate-50 text-slate-400 border border-slate-100"}`}
+        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-block ${
+          rowData.status
+            ? "bg-green-50 text-green-600 border border-green-100"
+            : "bg-slate-50 text-slate-400 border border-slate-100"
+        }`}
       >
         {rowData.status ? "Hoạt động" : "Không hoạt động"}
       </div>
+    );
+  };
+
+  /** Hiển thị số cơ sở gán cho cuộc khảo sát (chỉ isEvaluate) */
+  const facilitiesBodyTemplate = (rowData: any) => {
+    const count = rowData.facilities?.length ?? 0;
+    return count > 0 ? (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary-50 text-primary-700 border border-primary-100">
+        <Building2 size={11} /> {count} cơ sở
+      </span>
+    ) : (
+      <span className="text-slate-300 text-xs">—</span>
     );
   };
 
@@ -256,17 +289,40 @@ const SurveysManagement: React.FC = () => {
     return { total, active, inactive };
   }, [surveys, totalRecords]);
 
-  const filteredSurveys = surveys;
-
   const statusOptions = [
     { label: "Tất cả", value: "all" },
     { label: "Hoạt động", value: "active" },
     { label: "Đang tắt", value: "inactive" },
   ];
 
+  /** Danh sách cơ sở cho MultiSelect */
+  const facilityOptions = useMemo(
+    () =>
+      allFacilities.map((f) => ({
+        label: f.name,
+        value: String(f.id),
+        address: f.address,
+        category: f.category,
+      })),
+    [allFacilities],
+  );
+
+  /** Template item trong MultiSelect */
+  const facilityItemTemplate = (option: any) => (
+    <div className="flex flex-col py-0.5">
+      <span className="font-medium text-slate-700 text-sm">{option.label}</span>
+      {option.address && (
+        <span className="text-[11px] text-slate-400 truncate max-w-xs">
+          {option.address}
+        </span>
+      )}
+    </div>
+  );
+
   return (
     <AdminLayout title="Quản lý cuộc khảo sát">
       <Toast ref={toast} />
+      {/* ── Stats cards ── */}
       <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center gap-4 transition-all hover:shadow-md">
           <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
@@ -317,6 +373,7 @@ const SurveysManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* ── Table ── */}
       <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden p-6 relative">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-xl font-bold text-primary-900">
@@ -365,65 +422,80 @@ const SurveysManagement: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-            <DataTable
-              value={filteredSurveys}
-              loading={loading}
-              lazy
-              paginator
-              first={lazyParams.first}
-              rows={lazyParams.rows}
-              totalRecords={totalRecords}
-              onPage={onPage}
-              rowsPerPageOptions={[30, 50, 100]}
-              tableStyle={{ minWidth: "50rem" }}
-              emptyMessage="Không có dữ liệu phù hợp"
-              scrollable
-              scrollHeight="640px"
-            >
+          <DataTable
+            value={surveys}
+            loading={loading}
+            lazy
+            paginator
+            first={lazyParams.first}
+            rows={lazyParams.rows}
+            totalRecords={totalRecords}
+            onPage={onPage}
+            rowsPerPageOptions={[30, 50, 100]}
+            tableStyle={{ minWidth: "50rem" }}
+            emptyMessage="Không có dữ liệu phù hợp"
+            scrollable
+            scrollHeight="640px"
+          >
+            <Column
+              header="STT"
+              body={(_rowData, options) => options.rowIndex + lazyParams.first + 1}
+              style={{ width: "5rem" }}
+            />
+            <Column
+              field="name"
+              header="Tên cuộc khảo sát"
+              style={{ width: "20rem" }}
+            />
+            <Column
+              header="Thời hạn"
+              style={{ width: "15rem" }}
+              body={(rowData) => {
+                if (!rowData.dateFrom && !rowData.dateTo)
+                  return <span className="text-slate-400">Không giới hạn</span>;
+                return (
+                  <div className="text-xs">
+                    {rowData.dateFrom && (
+                      <div>
+                        Từ: <span className="font-bold">{rowData.dateFrom}</span>
+                      </div>
+                    )}
+                    {rowData.dateTo && (
+                      <div>
+                        Đến: <span className="font-bold">{rowData.dateTo}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              }}
+            />
+            {isEvaluate && (
               <Column
-                header="STT"
-                body={(rowData, options) =>
-                  options.rowIndex + lazyParams.first + 1
-                }
-                style={{ width: "5rem" }}
-              ></Column>
-              <Column
-                field="name"
-                header="Tên cuộc khảo sát"
-                style={{ width: "20rem" }}
-              ></Column>
-              <Column 
-                header="Thời hạn" 
-                style={{ width: "15rem" }}
-                body={(rowData) => {
-                    if (!rowData.dateFrom && !rowData.dateTo) return <span className="text-slate-400">Không giới hạn</span>;
-                    return (
-                        <div className="text-xs">
-                            {rowData.dateFrom && <div>Từ: <span className="font-bold">{rowData.dateFrom}</span></div>}
-                            {rowData.dateTo && <div>Đến: <span className="font-bold">{rowData.dateTo}</span></div>}
-                        </div>
-                    );
-                }}
-              ></Column>
-              <Column field="description" header="Mô tả"></Column>
-              <Column
-                header="Trạng thái"
-                body={statusBodyTemplate}
-                style={{ width: "8rem" }}
-              ></Column>
-              <Column
-                body={actionBodyTemplate}
-                exportable={false}
-                style={{ width: "8rem" }}
-                header="Thao tác"
-              ></Column>
-            </DataTable>
+                header="Cơ sở KCB"
+                body={facilitiesBodyTemplate}
+                style={{ width: "9rem" }}
+              />
+            )}
+            <Column field="description" header="Mô tả" />
+            <Column
+              header="Trạng thái"
+              body={statusBodyTemplate}
+              style={{ width: "8rem" }}
+            />
+            <Column
+              body={actionBodyTemplate}
+              exportable={false}
+              style={{ width: "8rem" }}
+              header="Thao tác"
+            />
+          </DataTable>
         </div>
       </div>
 
+      {/* ── Dialog ── */}
       <Dialog
         visible={surveyDialog}
-        style={{ width: "600px" }}
+        style={{ width: "640px" }}
         header={
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold text-slate-800">
@@ -453,15 +525,12 @@ const SurveysManagement: React.FC = () => {
         contentClassName="p-0"
       >
         <div className="p-6 space-y-5">
+          {/* Tên */}
           <div className="field">
-            <label
-              htmlFor="name"
-              className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1"
-            >
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">
               Tên cuộc khảo sát <span className="text-red-500">*</span>
             </label>
             <InputText
-              id="name"
               value={survey.name}
               onChange={(e) => setSurvey({ ...survey, name: e.target.value })}
               required
@@ -471,42 +540,55 @@ const SurveysManagement: React.FC = () => {
             />
           </div>
 
+          {/* Mô tả */}
           <div className="field">
-            <label
-              htmlFor="description"
-              className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1"
-            >
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">
               Mô tả
             </label>
             <InputTextarea
-              id="description"
               value={survey.description}
-              onChange={(e) =>
-                setSurvey({ ...survey, description: e.target.value })
-              }
+              onChange={(e) => setSurvey({ ...survey, description: e.target.value })}
               rows={3}
               className="w-full rounded-xl border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 p-4 transition-all"
               placeholder="Mô tả ngắn gọn về mục đích khảo sát..."
             />
           </div>
 
+          {/* Thời hạn */}
           <div className="grid grid-cols-2 gap-4">
             <div className="field">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Từ ngày</label>
-                <Calendar value={survey.dateFrom ? new Date(survey.dateFrom) : null} onChange={(e) => setSurvey({...survey, dateFrom: e.value})} dateFormat="yy-mm-dd" showIcon className="w-full rounded-xl" placeholder="Chọn ngày bắt đầu" />
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">
+                Từ ngày
+              </label>
+              <Calendar
+                value={survey.dateFrom ? new Date(survey.dateFrom) : null}
+                onChange={(e) => setSurvey({ ...survey, dateFrom: e.value })}
+                dateFormat="yy-mm-dd"
+                showIcon
+                className="w-full rounded-xl"
+                placeholder="Chọn ngày bắt đầu"
+              />
             </div>
             <div className="field">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Đến ngày</label>
-                <Calendar value={survey.dateTo ? new Date(survey.dateTo) : null} onChange={(e) => setSurvey({...survey, dateTo: e.value})} dateFormat="yy-mm-dd" showIcon className="w-full rounded-xl" placeholder="Chọn ngày kết thúc" />
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">
+                Đến ngày
+              </label>
+              <Calendar
+                value={survey.dateTo ? new Date(survey.dateTo) : null}
+                onChange={(e) => setSurvey({ ...survey, dateTo: e.value })}
+                dateFormat="yy-mm-dd"
+                showIcon
+                className="w-full rounded-xl"
+                placeholder="Chọn ngày kết thúc"
+              />
             </div>
           </div>
 
+          {/* Trạng thái */}
           <div className="field">
             <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div className="flex flex-col">
-                <span className="font-bold text-slate-700">
-                  Trạng thái hoạt động
-                </span>
+                <span className="font-bold text-slate-700">Trạng thái hoạt động</span>
                 <span className="text-xs text-slate-400">
                   Cho phép người dùng tham gia khảo sát
                 </span>
@@ -519,10 +601,11 @@ const SurveysManagement: React.FC = () => {
             </div>
           </div>
 
+          {/* Biểu mẫu */}
           <div className="field pt-2">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 block flex items-center gap-2 ml-1">
-              <ListChecks size={16} className="text-primary-500" /> Chọn biểu
-              mẫu áp dụng <span className="text-red-500">*</span>
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2 ml-1">
+              <ListChecks size={16} className="text-primary-500" /> Chọn biểu mẫu
+              áp dụng <span className="text-red-500">*</span>
             </label>
             <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
               <DataTable
@@ -533,7 +616,7 @@ const SurveysManagement: React.FC = () => {
                 dataKey="id"
                 emptyMessage="Không tìm thấy biểu mẫu nào"
                 scrollable
-                scrollHeight="260px"
+                scrollHeight="200px"
                 className="survey-form-table text-sm"
                 size="small"
                 rowClassName={() => "border-b border-slate-50"}
@@ -542,32 +625,74 @@ const SurveysManagement: React.FC = () => {
                   selectionMode="multiple"
                   headerStyle={{ width: "3rem", background: "#f8fafc" }}
                   className="px-4 py-3"
-                ></Column>
+                />
                 <Column
                   field="name"
                   header="Tên biểu mẫu"
-                  headerStyle={{
-                    background: "#f8fafc",
-                    fontWeight: "bold",
-                    color: "#64748b",
-                  }}
+                  headerStyle={{ background: "#f8fafc", fontWeight: "bold", color: "#64748b" }}
                   className="px-4 py-3 font-medium text-slate-700"
-                  body={(rowData) => (
-                    <div className="flex items-center gap-2">
-                      <span className="leading-relaxed">{rowData.name}</span>
-                    </div>
-                  )}
-                ></Column>
+                />
               </DataTable>
             </div>
             {selectedForms.length > 0 && (
-              <div className="mt-3 flex justify-end">
+              <div className="mt-2 flex justify-end">
                 <span className="text-[10px] font-black text-white bg-primary-600 px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-primary-100">
                   Đã chọn {selectedForms.length} biểu mẫu
                 </span>
               </div>
             )}
           </div>
+
+          {/* Cơ sở KCB — chỉ khi isEvaluate */}
+          {isEvaluate && (
+            <div className="field pt-1">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2 ml-1">
+                <Building2 size={16} className="text-primary-500" /> Cơ sở khám
+                chữa bệnh
+              </label>
+
+              <MultiSelect
+                value={selectedFacilityIds}
+                options={facilityOptions}
+                onChange={(e) => setSelectedFacilityIds(e.value)}
+                optionLabel="label"
+                optionValue="value"
+                filter
+                filterPlaceholder="Tìm tên cơ sở..."
+                placeholder={
+                  facilitiesLoading
+                    ? "Đang tải danh sách cơ sở..."
+                    : "Chọn cơ sở khám chữa bệnh..."
+                }
+                disabled={facilitiesLoading}
+                itemTemplate={facilityItemTemplate}
+                display="chip"
+                className="w-full border-slate-200 rounded-xl"
+                panelStyle={{ maxHeight: "300px" }}
+                maxSelectedLabels={5}
+                selectedItemsLabel="{0} cơ sở đã chọn"
+              />
+
+              {selectedFacilityIds.length > 0 && (
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-xs text-slate-500">
+                    Đã chọn{" "}
+                    <strong className="text-primary-700">
+                      {selectedFacilityIds.length}
+                    </strong>{" "}
+                    / {allFacilities.length} cơ sở
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFacilityIds([])}
+                    className="text-xs text-red-400 hover:text-red-600 underline"
+                  >
+                    Bỏ chọn tất cả
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </Dialog>
     </AdminLayout>
