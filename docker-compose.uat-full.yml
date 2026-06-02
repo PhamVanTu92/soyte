@@ -1,0 +1,84 @@
+version: '3.9'
+
+# ── UAT Full Stack — Backend + Frontend chung 1 compose ──────────
+#
+# Truy cập:  http://<server-ip>:3001   → Frontend (SPA)
+#            http://<server-ip>:3001/api → API Backend (proxy qua nginx)
+#            http://<server-ip>:3001/api-docs → Swagger UI
+#
+# Dùng:
+#   docker-compose -f docker-compose.uat-full.yml --env-file .env.uat up -d --build
+# ─────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Backend API ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: soyte-backend:uat
+    container_name: soyte-backend-uat
+    restart: unless-stopped
+    expose:
+      - "3000"          # chỉ expose nội bộ, nginx proxy
+    environment:
+      PORT: 3000
+      NODE_ENV: uat
+
+      DB_HOST:     "${DB_HOST:-host.docker.internal}"
+      DB_PORT:     "${DB_PORT:-35432}"
+      DB_NAME:     "${DB_NAME:-suckhuoethudo_uat_db}"
+      DB_USER:     "${DB_USER:-postgres}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_DIALECT:  postgres
+      DB_SSL:      "${DB_SSL:-false}"
+
+      JWT_SECRET:     "${JWT_SECRET}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-1d}"
+
+      ALLOWED_ORIGINS: "*"
+      FRONTEND_URL:    "${FRONTEND_URL:-http://localhost:3001}"
+      APP_BASE_URL:    "${APP_BASE_URL:-http://localhost:3001}"
+
+      EMAIL_HOST: "${EMAIL_HOST}"
+      EMAIL_PORT: "${EMAIL_PORT:-587}"
+      EMAIL_USER: "${EMAIL_USER}"
+      EMAIL_PASS: "${EMAIL_PASS}"
+
+      EXPORT_MAX_ROWS: "${EXPORT_MAX_ROWS:-1000}"
+      STATS_MAX_FETCH: "${STATS_MAX_FETCH:-1000}"
+
+      SWAGGER_SERVER_URL: "http://${SERVER_IP:-localhost}:3001"
+
+    volumes:
+      - uploads_uat_data:/app/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - soyte_uat_net
+
+  # ── Frontend SPA + Nginx Reverse Proxy ───────────────────────────
+  frontend:
+    build:
+      context: ./soyte-main
+      dockerfile: Dockerfile.combined
+      args:
+        BUILD_MODE: uat
+    image: soyte-frontend:uat
+    container_name: soyte-frontend-uat
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:${APP_PORT:-3001}:80"
+    depends_on:
+      - backend
+    networks:
+      - soyte_uat_net
+
+volumes:
+  uploads_uat_data:
+    driver: local
+
+networks:
+  soyte_uat_net:
+    driver: bridge

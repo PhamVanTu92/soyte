@@ -1,0 +1,84 @@
+version: '3.9'
+
+# ── Production Full Stack — Backend + Frontend chung 1 compose ───
+#
+# Truy cập:  http://<domain>/        → Frontend (SPA)
+#            http://<domain>/api     → API Backend (proxy qua nginx)
+#            http://<domain>/api-docs → Swagger UI
+#
+# Dùng:
+#   docker-compose -f docker-compose.prod-full.yml --env-file .env up -d --build
+# ─────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Backend API ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: soyte-backend:latest
+    container_name: soyte-backend
+    restart: unless-stopped
+    expose:
+      - "3000"          # chỉ expose nội bộ, nginx proxy
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+
+      DB_HOST:     "${DB_HOST:-127.0.0.1}"
+      DB_PORT:     "${DB_PORT:-35432}"
+      DB_NAME:     "${DB_NAME:-suckhuoethudo_db}"
+      DB_USER:     "${DB_USER:-postgres}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_DIALECT:  postgres
+      DB_SSL:      "${DB_SSL:-false}"
+
+      JWT_SECRET:     "${JWT_SECRET}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-7d}"
+
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
+      FRONTEND_URL:    "${FRONTEND_URL}"
+      APP_BASE_URL:    "${APP_BASE_URL}"
+
+      EMAIL_HOST: "${EMAIL_HOST}"
+      EMAIL_PORT: "${EMAIL_PORT:-587}"
+      EMAIL_USER: "${EMAIL_USER}"
+      EMAIL_PASS: "${EMAIL_PASS}"
+
+      EXPORT_MAX_ROWS: "${EXPORT_MAX_ROWS:-5000}"
+      STATS_MAX_FETCH: "${STATS_MAX_FETCH:-2000}"
+
+      SWAGGER_SERVER_URL: "${SWAGGER_SERVER_URL}"
+
+    volumes:
+      - uploads_data:/app/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - soyte_net
+
+  # ── Frontend SPA + Nginx Reverse Proxy ───────────────────────────
+  frontend:
+    build:
+      context: ./soyte-main
+      dockerfile: Dockerfile.combined
+      args:
+        BUILD_MODE: prod
+    image: soyte-frontend:latest
+    container_name: soyte-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:80"   # Nginx/Caddy bên ngoài trỏ vào đây
+    depends_on:
+      - backend
+    networks:
+      - soyte_net
+
+volumes:
+  uploads_data:
+    driver: local
+
+networks:
+  soyte_net:
+    driver: bridge
