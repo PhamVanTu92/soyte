@@ -112,30 +112,37 @@ const getForms = async (queryOptions = {}) => {
   if (status) where.status = status;
   if (type)   where.type = type;
 
-  const { count, rows } = await db.Form.findAndCountAll({
-    where,
-    offset,
-    limit,
-    order: [['created_at', 'DESC']],
-    attributes: [
-      'id', 'name', 'description', 'org', 'badge', 'type', 'status',
-      'created_at', 'updated_at',
-    ],
-    include: [
-      {
-        model: db.FormSection,
-        as: 'sections',
-        attributes: ['id'],
-        include: [
-          {
-            model: db.FormQuestion,
-            as: 'questions',
-            attributes: ['id', 'type'],
-          },
-        ],
-      },
-    ],
-  });
+  // Đếm active / inactive cho toàn bộ điều kiện (không phân trang)
+  const activeWhere   = { ...where, status: 'active' };
+  const inactiveWhere = { ...where, status: { [Op.ne]: 'active' } };
+  const [activeCount, inactiveCount, { count, rows }] = await Promise.all([
+    db.Form.count({ where: activeWhere }),
+    db.Form.count({ where: inactiveWhere }),
+    db.Form.findAndCountAll({
+      where,
+      offset,
+      limit,
+      order: [['created_at', 'DESC']],
+      attributes: [
+        'id', 'name', 'description', 'org', 'badge', 'type', 'status',
+        'created_at', 'updated_at',
+      ],
+      include: [
+        {
+          model: db.FormSection,
+          as: 'sections',
+          attributes: ['id'],
+          include: [
+            {
+              model: db.FormQuestion,
+              as: 'questions',
+              attributes: ['id', 'type'],
+            },
+          ],
+        },
+      ],
+    }),
+  ]);
 
   const items = rows.map((f) => {
     const plain = f.get({ plain: true });
@@ -150,7 +157,7 @@ const getForms = async (queryOptions = {}) => {
     return { ...plain, section_count: sectionCount, question_count: questionCount, likert_count: likertCount };
   });
 
-  return { items, total: count, page, limit };
+  return { items, total: count, active_count: activeCount, inactive_count: inactiveCount, page, limit };
 };
 
 /**

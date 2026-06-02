@@ -10,6 +10,7 @@ import { FeedbackDataTable } from "../components/feedbacks/FeedbackDataTable";
 import { FeedbackDetailsDialog } from "../components/feedbacks/FeedbackDetailsDialog";
 import FacilityStatusCard from "../components/feedbacks/FacilityStatusCard";
 import { surveyService } from "@/services/surveyService";
+import { surveyNewService } from "@/services/surveyNewService";
 import { useReportFilter } from "@/hooks/useReportFilter";
 
 const ALLOWED_TYPES = ["evaluate", "reflect"] as const;
@@ -87,7 +88,13 @@ const FeedbacksManagement: React.FC = () => {
   useEffect(() => {
     const fetchSurveys = async () => {
       try {
-        const data = await surveyService.fetchSurveys(1, 1000, type);
+        let data: any;
+        if (isEvaluate) {
+          // Dùng service mới cho evaluate để lấy đúng surveys-new có facilities
+          data = await surveyNewService.fetchSurveys(1, 1000, type);
+        } else {
+          data = await surveyService.fetchSurveys(1, 1000, type);
+        }
         const list = Array.isArray(data?.items)
           ? data.items
           : Array.isArray(data)

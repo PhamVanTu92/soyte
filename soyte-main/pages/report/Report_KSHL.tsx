@@ -8,7 +8,7 @@ import { exportKSHLToPDF } from "@/utils/pdfExportKSHL";
 import { useGSATData } from "@/hooks/useGSATData";
 import { ReportHeader } from "@/components/report/ReportHeader";
 import { useReportFilter } from "@/hooks/useReportFilter";
-import { surveyService } from "@/services/surveyService";
+import { surveyNewService } from "@/services/surveyNewService";
 
 const Report_KSHL = () => {
   const toast = useRef<Toast>(null);
@@ -49,7 +49,7 @@ const Report_KSHL = () => {
   React.useEffect(() => {
     const fetchSurveys = async () => {
       try {
-        const data = await surveyService.fetchSurveys(1, 1000, "evaluate");
+        const data = await surveyNewService.fetchSurveys(1, 1000, "evaluate");
         const list = Array.isArray(data?.items)
           ? data.items
           : Array.isArray(data)

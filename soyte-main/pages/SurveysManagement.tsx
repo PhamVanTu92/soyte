@@ -60,6 +60,7 @@ const SurveysManagement: React.FC = () => {
   const [allFacilities, setAllFacilities] = useState<any[]>([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
   const [selectedFacilityIds, setSelectedFacilityIds] = useState<string[]>([]);
+  const [facilityCategory, setFacilityCategory] = useState<string>("all");
 
   const fetchSurveys = async () => {
     try {
@@ -155,6 +156,7 @@ const SurveysManagement: React.FC = () => {
     setSurvey({ name: "", description: "", status: true, form_ids: [], dateFrom: null, dateTo: null });
     setSelectedForms([]);
     setSelectedFacilityIds([]);
+    setFacilityCategory("all");
     setSurveyDialog(true);
   };
 
@@ -238,6 +240,7 @@ const SurveysManagement: React.FC = () => {
         String(fac.id ?? fac.facility_id ?? fac),
       );
       setSelectedFacilityIds(facIds);
+      setFacilityCategory("all");
     }
     setSurveyDialog(true);
   };
@@ -320,17 +323,24 @@ const SurveysManagement: React.FC = () => {
     { label: "Đang tắt", value: "inactive" },
   ];
 
-  /** Danh sách cơ sở cho MultiSelect */
-  const facilityOptions = useMemo(
-    () =>
-      allFacilities.map((f) => ({
-        label: f.name,
-        value: String(f.id),
-        address: f.address,
-        category: f.category,
-      })),
-    [allFacilities],
-  );
+  /** Danh sách loại hình cơ sở (unique) */
+  const facilityCategories = useMemo(() => {
+    const cats = Array.from(new Set(allFacilities.map(f => f.category).filter(Boolean))) as string[];
+    return [{ label: "Tất cả loại hình", value: "all" }, ...cats.map(c => ({ label: c, value: c }))];
+  }, [allFacilities]);
+
+  /** Danh sách cơ sở cho MultiSelect (đã lọc theo loại hình) */
+  const facilityOptions = useMemo(() => {
+    const list = facilityCategory === "all"
+      ? allFacilities
+      : allFacilities.filter(f => f.category === facilityCategory);
+    return list.map((f) => ({
+      label: f.name,
+      value: String(f.id),
+      address: f.address,
+      category: f.category,
+    }));
+  }, [allFacilities, facilityCategory]);
 
   /** Template item trong MultiSelect */
   const facilityItemTemplate = (option: any) => (
@@ -675,6 +685,17 @@ const SurveysManagement: React.FC = () => {
                 <Building2 size={16} className="text-primary-500" /> Cơ sở khám
                 chữa bệnh
               </label>
+
+              {/* Lọc theo loại hình */}
+              <div className="mb-2">
+                <Dropdown
+                  value={facilityCategory}
+                  options={facilityCategories}
+                  onChange={(e) => setFacilityCategory(e.value)}
+                  placeholder="Lọc theo loại hình..."
+                  className="w-full rounded-xl border-slate-200 text-sm"
+                />
+              </div>
 
               <MultiSelect
                 value={selectedFacilityIds}

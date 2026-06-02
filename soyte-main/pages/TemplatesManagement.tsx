@@ -8,7 +8,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Dialog } from "primereact/dialog";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Toast } from "@/components/prime";
-import { Plus, QrCode, Pencil, Trash2, FileText, Layers, HelpCircle } from "lucide-react";
+import { Plus, QrCode, Pencil, Trash2, FileText, Layers, HelpCircle, Eye } from "lucide-react";
 import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
 
 const ALLOWED_TYPES = ["evaluate", "reflect"] as const;
@@ -30,6 +30,8 @@ const TemplatesManagement: React.FC = () => {
   const [templates,    setTemplates]    = useState<any[]>([]);
   const [loading,      setLoading]      = useState(false);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [activeCount,  setActiveCount]  = useState(0);
+  const [inactiveCount,setInactiveCount]= useState(0);
   const [page,         setPage]         = useState(1);
   const PAGE_SIZE = 24;
 
@@ -54,6 +56,8 @@ const TemplatesManagement: React.FC = () => {
       const total = raw?.total ?? list.length;
       setTemplates(list);
       setTotalRecords(total);
+      if (raw?.active_count !== undefined) setActiveCount(raw.active_count);
+      if (raw?.inactive_count !== undefined) setInactiveCount(raw.inactive_count);
     } catch {
       toast.current?.show({ severity: "error", summary: "Lỗi", detail: "Không thể tải danh sách biểu mẫu" });
     } finally { setLoading(false); }
@@ -65,11 +69,12 @@ const TemplatesManagement: React.FC = () => {
     return () => clearTimeout(t);
   }, [search]);
 
-  /* ── Stats ─────────────────────────────────────────── */
-  const stats = useMemo(() => {
-    const active   = templates.filter(t => t.status === "active" || t.status === true).length;
-    return { total: totalRecords, active, inactive: totalRecords - active };
-  }, [templates, totalRecords]);
+  /* ── Stats (lấy từ backend, chính xác toàn bộ không phụ thuộc trang) ── */
+  const stats = useMemo(() => ({
+    total:    totalRecords,
+    active:   activeCount,
+    inactive: inactiveCount,
+  }), [totalRecords, activeCount, inactiveCount]);
 
   /* ── Filtered (client-side status only) ────────────── */
   const filtered = useMemo(() => {
@@ -195,9 +200,16 @@ const TemplatesManagement: React.FC = () => {
             className="!text-xs !py-1.5 !px-3 p-button-outlined border-primary-200 text-primary-700 hover:bg-primary-50 rounded-lg font-semibold flex-1"
           />
           <Button
-            icon={<QrCode size={12}/>} label="QR"
+            icon={<Eye size={12}/>} label="Xem"
+            onClick={() => window.open(`/forms/${t.id}`, "_blank")}
+            className="!text-xs !py-1.5 !px-3 p-button-outlined border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-semibold flex-1"
+            title="Xem trước biểu mẫu"
+          />
+          <Button
+            icon={<QrCode size={12}/>}
             onClick={() => openQr(t)}
-            className="!text-xs !py-1.5 !px-3 p-button-outlined border-secondary-200 text-secondary-700 hover:bg-secondary-50 rounded-lg font-semibold flex-1"
+            className="!text-xs !py-1.5 !px-2 p-button-outlined border-secondary-200 text-secondary-700 hover:bg-secondary-50 rounded-lg"
+            title="Tạo mã QR"
           />
           <Button
             icon={<Trash2 size={12}/>}
