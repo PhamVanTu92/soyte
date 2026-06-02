@@ -1075,6 +1075,235 @@ const options = {
       },
 
       // ══════════════════════════════════════════════════════════
+      //  SURVEYS NEW (kèm danh sách cơ sở khám chữa bệnh)
+      // ══════════════════════════════════════════════════════════
+      '/api/surveys-new': {
+        get: {
+          tags: ['Surveys New'],
+          summary: 'Danh sách khảo sát (kèm danh sách cơ sở)',
+          parameters: [
+            { name: 'page',   in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit',  in: 'query', schema: { type: 'integer', default: 10 } },
+            { name: 'name',   in: 'query', schema: { type: 'string' }, description: 'Tìm theo tên' },
+            { name: 'type',   in: 'query', schema: { type: 'string', enum: ['reflect', 'evaluate'] } },
+            { name: 'status', in: 'query', schema: { type: 'boolean' } },
+          ],
+          responses: { 200: { description: 'Thành công' } },
+        },
+        post: {
+          tags: ['Surveys New'],
+          summary: 'Tạo khảo sát mới (kèm facility_ids)',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  allOf: [
+                    { $ref: '#/components/schemas/SurveyBody' },
+                    {
+                      type: 'object',
+                      properties: {
+                        facility_ids: {
+                          type: 'array',
+                          items: { type: 'integer' },
+                          example: [1, 2, 3],
+                          description: 'Danh sách ID cơ sở tham gia khảo sát',
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          responses: { 201: { description: 'Tạo thành công' } },
+        },
+      },
+      '/api/surveys-new/{id}': {
+        get: {
+          tags: ['Surveys New'],
+          summary: 'Chi tiết khảo sát (kèm danh sách cơ sở)',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { 200: { description: 'Thành công' }, 404: { description: 'Không tìm thấy' } },
+        },
+        put: {
+          tags: ['Surveys New'],
+          summary: 'Cập nhật khảo sát (kèm facility_ids)',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  allOf: [
+                    { $ref: '#/components/schemas/SurveyBody' },
+                    {
+                      type: 'object',
+                      properties: {
+                        facility_ids: {
+                          type: 'array',
+                          items: { type: 'integer' },
+                          example: [1, 2, 3],
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          responses: { 200: { description: 'Cập nhật thành công' } },
+        },
+        delete: {
+          tags: ['Surveys New'],
+          summary: 'Xóa khảo sát',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { 200: { description: 'Xóa thành công' } },
+        },
+      },
+      '/api/surveys-new/{id}/facilities': {
+        get: {
+          tags: ['Surveys New'],
+          summary: 'Danh sách cơ sở của khảo sát',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { 200: { description: 'Thành công' } },
+        },
+        post: {
+          tags: ['Surveys New'],
+          summary: 'Gán danh sách cơ sở cho khảo sát (ghi đè toàn bộ)',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['facility_ids'],
+                  properties: {
+                    facility_ids: { type: 'array', items: { type: 'integer' }, example: [1, 2, 3] },
+                  },
+                },
+              },
+            },
+          },
+          responses: { 200: { description: 'Cập nhật thành công' } },
+        },
+      },
+      '/api/surveys-new/{id}/facilities/{facilityId}': {
+        put: {
+          tags: ['Surveys New'],
+          summary: 'Thêm 1 cơ sở vào khảo sát',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id',         in: 'path', required: true, schema: { type: 'integer' } },
+            { name: 'facilityId', in: 'path', required: true, schema: { type: 'integer' } },
+          ],
+          responses: { 200: { description: 'Thêm thành công' } },
+        },
+        delete: {
+          tags: ['Surveys New'],
+          summary: 'Gỡ 1 cơ sở khỏi khảo sát',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id',         in: 'path', required: true, schema: { type: 'integer' } },
+            { name: 'facilityId', in: 'path', required: true, schema: { type: 'integer' } },
+          ],
+          responses: { 200: { description: 'Gỡ thành công' }, 404: { description: 'Không thuộc khảo sát' } },
+        },
+      },
+
+      // ══════════════════════════════════════════════════════════
+      //  FEEDBACKS NEW (filter theo facility_id qua survey_facilities)
+      // ══════════════════════════════════════════════════════════
+      '/api/feedbacks-new': {
+        get: {
+          tags: ['Feedbacks New'],
+          summary: 'Danh sách phản hồi (filter theo cơ sở, survey)',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'page',        in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit',       in: 'query', schema: { type: 'integer', default: 10 } },
+            { name: 'type',        in: 'query', schema: { type: 'string', enum: ['reflect', 'evaluate'] } },
+            { name: 'status',      in: 'query', schema: { type: 'string', enum: ['pending', 'approved', 'rejected'] } },
+            { name: 'survey_key',  in: 'query', schema: { type: 'string' }, description: 'ID khảo sát (cách nhau dấu phẩy)' },
+            { name: 'survey_id',   in: 'query', schema: { type: 'string' }, description: 'Alias của survey_key' },
+            { name: 'facility_id', in: 'query', schema: { type: 'string' }, description: 'ID cơ sở (cách nhau dấu phẩy) — filter qua bảng survey_facilities' },
+            { name: 'startDate',   in: 'query', schema: { type: 'string', format: 'date' } },
+            { name: 'endDate',     in: 'query', schema: { type: 'string', format: 'date' } },
+          ],
+          responses: { 200: { description: 'Thành công' } },
+        },
+      },
+      '/api/feedbacks-new/list': {
+        post: {
+          tags: ['Feedbacks New'],
+          summary: 'Danh sách phản hồi (body-based query)',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    page:        { type: 'integer', default: 1 },
+                    limit:       { type: 'integer', default: 10 },
+                    type:        { type: 'string', enum: ['reflect', 'evaluate'] },
+                    status:      { type: 'string', enum: ['pending', 'approved', 'rejected'] },
+                    survey_key:  { type: 'string' },
+                    survey_id:   { type: 'string' },
+                    facility_id: { type: 'string', description: 'ID cơ sở, cách nhau dấu phẩy' },
+                    startDate:   { type: 'string', format: 'date' },
+                    endDate:     { type: 'string', format: 'date' },
+                  },
+                },
+              },
+            },
+          },
+          responses: { 200: { description: 'Thành công' } },
+        },
+      },
+      '/api/feedbacks-new/survey/{surveyId}/facility-status': {
+        get: {
+          tags: ['Feedbacks New'],
+          summary: 'Trạng thái nộp phiếu của từng cơ sở trong khảo sát',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'surveyId', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: {
+            200: {
+              description: 'Danh sách cơ sở kèm trạng thái submitted: true/false',
+            },
+          },
+        },
+      },
+      '/api/feedbacks-new/facility/{facilityId}': {
+        get: {
+          tags: ['Feedbacks New'],
+          summary: 'Danh sách phản hồi của 1 cơ sở',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'facilityId', in: 'path', required: true, schema: { type: 'integer' } },
+            { name: 'page',  in: 'query', schema: { type: 'integer', default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
+            { name: 'type',  in: 'query', schema: { type: 'string', enum: ['reflect', 'evaluate'] } },
+          ],
+          responses: { 200: { description: 'Thành công' } },
+        },
+      },
+      '/api/feedbacks-new/{id}': {
+        get: {
+          tags: ['Feedbacks New'],
+          summary: 'Chi tiết phản hồi',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+          responses: { 200: { description: 'Thành công' }, 404: { description: 'Không tìm thấy' } },
+        },
+      },
+
+      // ══════════════════════════════════════════════════════════
       //  SOCIAL FACILITIES
       // ══════════════════════════════════════════════════════════
       '/api/social-facilities': {
