@@ -8,7 +8,8 @@ import { Dropdown } from "primereact/dropdown";
 import { Dialog } from "primereact/dialog";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Toast } from "@/components/prime";
-import { Plus, QrCode, Pencil, Copy, FileText, Layers, HelpCircle } from "lucide-react";
+import { Plus, QrCode, Pencil, Trash2, FileText, Layers, HelpCircle } from "lucide-react";
+import { confirmDialog, ConfirmDialog } from "primereact/confirmdialog";
 
 const ALLOWED_TYPES = ["evaluate", "reflect"] as const;
 
@@ -78,6 +79,37 @@ const TemplatesManagement: React.FC = () => {
       return statusFilter === "active" ? isActive : !isActive;
     });
   }, [templates, statusFilter]);
+
+  /* ── Delete ─────────────────────────────────────────── */
+  const deleteTemplate = (form: any) => {
+    confirmDialog({
+      message: (
+        <div className="flex flex-col gap-2 pt-2">
+          <p className="text-sm text-slate-600">
+            Bạn có chắc muốn xóa biểu mẫu <strong className="text-slate-800">"{form.name}"</strong>?
+          </p>
+          <p className="text-xs text-slate-400">Dữ liệu đã xóa không thể phục hồi.</p>
+        </div>
+      ) as any,
+      header: "Xác nhận xóa biểu mẫu",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Xóa",
+      rejectLabel: "Hủy",
+      acceptClassName: "!bg-red-600 border-red-600 hover:!bg-red-700 text-white font-bold ml-2",
+      rejectClassName: "p-button-text text-slate-500 font-bold",
+      accept: async () => {
+        try {
+          await formService.deleteForm(String(form.id));
+          toast.current?.show({ severity: "success", summary: "Thành công", detail: "Đã xóa biểu mẫu" });
+          fetchTemplates();
+        } catch (err: any) {
+          // Backend trả message lý do nếu đang dùng trong survey
+          const detail = err?.message?.replace("API Error: ", "") ?? "Không thể xóa biểu mẫu";
+          toast.current?.show({ severity: "error", summary: "Không thể xóa", detail, life: 7000 });
+        }
+      },
+    });
+  };
 
   /* ── QR dialog ──────────────────────────────────────── */
   const openQr = async (form: any) => {
@@ -167,6 +199,12 @@ const TemplatesManagement: React.FC = () => {
             onClick={() => openQr(t)}
             className="!text-xs !py-1.5 !px-3 p-button-outlined border-secondary-200 text-secondary-700 hover:bg-secondary-50 rounded-lg font-semibold flex-1"
           />
+          <Button
+            icon={<Trash2 size={12}/>}
+            onClick={() => deleteTemplate(t)}
+            className="!text-xs !py-1.5 !px-2 p-button-outlined border-red-200 text-red-400 hover:bg-red-50 rounded-lg"
+            title="Xóa biểu mẫu"
+          />
         </div>
       </div>
     );
@@ -177,6 +215,7 @@ const TemplatesManagement: React.FC = () => {
   return (
     <AdminLayout title="Quản lý biểu mẫu">
       <Toast ref={toast}/>
+      <ConfirmDialog />
 
       {/* ── Stats ───────────────────────────────────────── */}
       <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">

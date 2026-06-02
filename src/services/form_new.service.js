@@ -243,11 +243,24 @@ const updateForm = async (id, data) => {
 };
 
 /**
- * Soft-delete (dùng paranoid của model Form)
+ * Soft-delete — chỉ cho phép nếu biểu mẫu không thuộc cuộc khảo sát nào
  */
 const deleteForm = async (id) => {
   const form = await db.Form.findByPk(id);
   if (!form) throw new ApiError(404, 'Biểu mẫu không tồn tại');
+
+  // Kiểm tra form có đang được dùng trong survey nào không
+  const usedInSurvey = await db.Survey.findOne({
+    where: db.sequelize.literal(`form_ids LIKE '%${Number(id)}%'`),
+    attributes: ['id', 'name'],
+  });
+  if (usedInSurvey) {
+    throw new ApiError(
+      400,
+      `Không thể xóa — biểu mẫu đang được sử dụng trong cuộc khảo sát "${usedInSurvey.name}". Hãy gỡ biểu mẫu khỏi khảo sát trước.`,
+    );
+  }
+
   await form.destroy();
   return { id };
 };

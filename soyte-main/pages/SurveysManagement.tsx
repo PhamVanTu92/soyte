@@ -242,6 +242,22 @@ const SurveysManagement: React.FC = () => {
     setSurveyDialog(true);
   };
 
+  const toggleStatus = async (rowData: any) => {
+    try {
+      const id = rowData.key ?? rowData.id;
+      const newStatus = !rowData.status;
+      if (isEvaluate) {
+        await surveyNewService.updateSurvey(id, { status: newStatus });
+      } else {
+        await surveyService.updateSurvey(id, { ...rowData, status: newStatus });
+      }
+      toast.current?.show({ severity: "success", summary: "Thành công", detail: `Đã ${newStatus ? "kích hoạt" : "tắt"} cuộc khảo sát` });
+      fetchSurveys();
+    } catch {
+      toast.current?.show({ severity: "error", summary: "Lỗi", detail: "Không thể cập nhật trạng thái" });
+    }
+  };
+
   const actionBodyTemplate = (rowData: any) => {
     return (
       <div className="flex gap-2">
@@ -251,6 +267,15 @@ const SurveysManagement: React.FC = () => {
           outlined
           className="w-8 h-8 p-0 text-primary-600"
           onClick={() => editSurvey(rowData)}
+          title="Chỉnh sửa"
+        />
+        <Button
+          icon={rowData.status ? "pi pi-eye-slash" : "pi pi-eye"}
+          rounded
+          outlined
+          className={`w-8 h-8 p-0 ${rowData.status ? "text-orange-500" : "text-green-600"}`}
+          onClick={() => toggleStatus(rowData)}
+          title={rowData.status ? "Tắt" : "Kích hoạt"}
         />
       </div>
     );

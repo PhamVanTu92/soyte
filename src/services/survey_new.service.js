@@ -167,8 +167,11 @@ const updateSurvey = async (id, surveyData) => {
   const data = {};
   if (rest.name !== undefined)        data.name = rest.name;
   if (rest.type !== undefined)        data.type = rest.type;
-  if (rest.date_from || rest.dateFrom) data.date_from = rest.date_from || rest.dateFrom;
-  if (rest.date_to   || rest.dateTo)   data.date_to   = rest.date_to   || rest.dateTo;
+  // Cho phép set null (xóa ngày) hoặc giá trị mới
+  if ('date_from' in rest || 'dateFrom' in rest)
+    data.date_from = rest.date_from || rest.dateFrom || null;
+  if ('date_to' in rest || 'dateTo' in rest)
+    data.date_to = rest.date_to || rest.dateTo || null;
   if (rest.form_ids) {
     data.form_ids = rest.form_ids.map(item =>
       typeof item === 'object' && item !== null ? (item.id || item.form_id || item) : item
