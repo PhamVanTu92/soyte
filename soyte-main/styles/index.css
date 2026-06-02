@@ -1,0 +1,417 @@
+.p-sidebar .p-sidebar-header {
+  display: none;
+}
+
+.p-sidebar-content {
+  padding: 0px;
+}
+
+/* ── Facility MultiSelect Panel ── */
+.facility-ms-panel {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(99, 102, 241, 0.08) !important;
+  border: 1px solid #e0e7ff !important;
+  overflow: hidden !important;
+  max-width: 600px !important;
+}
+
+/* Header (select all row) */
+.facility-ms-panel .p-multiselect-header {
+  padding: 10px 14px !important;
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  gap: 10px !important;
+}
+
+/* Filter input */
+.facility-ms-panel .p-multiselect-filter {
+  padding: 8px 12px !important;
+  border: 1.5px solid #c7d2fe !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  width: 100% !important;
+}
+
+.facility-ms-panel .p-multiselect-filter:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+  outline: none !important;
+}
+
+/* Items */
+.facility-ms-panel .p-multiselect-item {
+  padding: 10px 14px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  gap: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  font-size: 13px !important;
+  transition: background 0.12s !important;
+}
+
+.facility-ms-panel .p-multiselect-item:hover {
+  background: #f8fafc !important;
+}
+
+.facility-ms-panel .p-multiselect-item.p-highlight {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  font-weight: 500 !important;
+}
+
+/* ── Checkbox base ── */
+.facility-ms-panel .p-checkbox {
+  flex-shrink: 0 !important;
+}
+
+.facility-ms-panel .p-checkbox .p-checkbox-box {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 6px !important;
+  border: 2px solid #94a3b8 !important;
+  background: #fff !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.facility-ms-panel .p-multiselect-item:hover .p-checkbox .p-checkbox-box {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* ── Checkbox SELECTED – PrimeReact v10 dùng data-p-highlight thay vì .p-highlight ── */
+.facility-ms-panel .p-checkbox .p-checkbox-box[data-p-highlight="true"],
+.facility-ms-panel .p-checkbox[data-p-highlight="true"] .p-checkbox-box {
+  background: #6366f1 !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35) !important;
+}
+
+/* Icon checkmark bên trong (SVG dùng fill="currentColor") */
+.facility-ms-panel .p-checkbox .p-checkbox-box[data-p-highlight="true"] .p-checkbox-icon,
+.facility-ms-panel .p-checkbox[data-p-highlight="true"] .p-checkbox-box .p-checkbox-icon {
+  color: #fff !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* SVG path dùng fill="currentColor" → inherit color: white từ trên */
+.facility-ms-panel .p-checkbox .p-checkbox-box[data-p-highlight="true"] svg,
+.facility-ms-panel .p-checkbox[data-p-highlight="true"] .p-checkbox-box svg {
+  color: #fff !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+.facility-ms-panel .p-checkbox .p-checkbox-box[data-p-highlight="true"] svg path,
+.facility-ms-panel .p-checkbox[data-p-highlight="true"] .p-checkbox-box svg path {
+  fill: currentColor !important;
+}
+
+/* ── Survey Form Table Checkbox ── */
+.survey-form-table .p-checkbox .p-checkbox-box {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 6px !important;
+  border: 2px solid #cbd5e1 !important; /* light slate border */
+  background: #fff !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.survey-form-table .p-checkbox .p-checkbox-box:hover {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.survey-form-table .p-checkbox .p-checkbox-box[data-p-highlight="true"],
+.survey-form-table .p-checkbox[data-p-highlight="true"] .p-checkbox-box {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3) !important;
+}
+
+.survey-form-table .p-checkbox .p-checkbox-box .p-checkbox-icon,
+.survey-form-table .p-checkbox .p-checkbox-box svg {
+  color: #fff !important;
+}
+
+.survey-form-table .p-checkbox .p-checkbox-box svg path {
+  fill: currentColor !important;
+
+}
+
+/* ── Survey MultiSelect Panel ── */
+.survey-ms-panel {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.survey-ms-panel .p-multiselect-header {
+  padding: 12px 14px !important;
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+/* Tăng kích thước và khoảng cách cho ô search */
+.survey-ms-panel .p-multiselect-filter-container {
+  flex: 1 !important;
+  position: relative !important;
+}
+
+.survey-ms-panel .p-multiselect-filter-container .p-inputtext {
+  width: 100% !important;
+  height: 40px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  padding: 8px 12px 8px 36px !important; /* Padding left để tránh đè icon */
+  font-size: 14px !important;
+}
+
+/* Icon search */
+.survey-ms-panel .p-multiselect-filter-icon {
+  left: 12px !important;
+  color: #64748b !important;
+}
+
+
+.survey-ms-panel .p-multiselect-item {
+  padding: 8px 12px !important;
+  gap: 10px !important;
+}
+
+.survey-ms-panel .p-checkbox .p-checkbox-box {
+  border: 2px solid #94a3b8 !important; /* Viền rõ hơn khi chưa tích */
+  border-radius: 4px !important;
+  background: #ffffff !important;
+}
+
+.survey-ms-panel .p-checkbox .p-checkbox-box[data-p-highlight="true"] {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+/* Fix vertical alignment for labels in MultiSelect */
+.p-multiselect.h-\[48px\] .p-multiselect-label {
+  padding: 0 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 100% !important;
+}
+
+/* ── User Modal MultiSelect Chips & Label ── */
+.user-modal-ms .p-multiselect-label {
+  padding: 0 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 48px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.user-modal-ms .p-multiselect-token {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  padding: 6px 12px !important;
+  border-radius: 10px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  margin: 2px !important;
+  border: 1px solid #c7d2fe !important;
+  animation: in 0.2s zoom-in-95 ease-out-back;
+}
+
+.user-modal-ms .p-multiselect-token-icon {
+  margin-left: 8px !important;
+  font-size: 10px !important;
+  color: #6366f1 !important;
+  cursor: pointer !important;
+}
+
+.user-modal-ms .p-multiselect-token-icon:hover {
+  color: #4338ca !important;
+}
+
+.user-modal-ms .p-multiselect-trigger {
+  width: 40px !important;
+}
+
+/* ── Checkbox v10 fallback ── */
+.p-checkbox-box[data-p-highlight="true"] {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+/* ── Roles MultiSelect Panel (User Modal) ── */
+.roles-ms-panel {
+  border-radius: 14px !important;
+  box-shadow:
+    0 12px 40px rgba(15, 23, 42, 0.12),
+    0 2px 6px rgba(99, 102, 241, 0.08) !important;
+  border: 1px solid #e0e7ff !important;
+  overflow: hidden !important;
+  margin-top: 6px !important;
+}
+
+/* Header: select-all + filter on a single tidy row */
+.roles-ms-panel .p-multiselect-header {
+  padding: 12px 14px !important;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+/* Select-all checkbox: enlarge & space it from filter */
+.roles-ms-panel .p-multiselect-header .p-checkbox {
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+}
+
+.roles-ms-panel .p-multiselect-header .p-checkbox .p-checkbox-box {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 6px !important;
+  border: 2px solid #94a3b8 !important;
+  background: #fff !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.roles-ms-panel .p-multiselect-header .p-checkbox .p-checkbox-box[data-p-highlight="true"],
+.roles-ms-panel .p-multiselect-header .p-checkbox[data-p-highlight="true"] .p-checkbox-box {
+  background: #6366f1 !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35) !important;
+}
+
+.roles-ms-panel .p-multiselect-header .p-checkbox .p-checkbox-box[data-p-highlight="true"] svg,
+.roles-ms-panel .p-multiselect-header .p-checkbox[data-p-highlight="true"] .p-checkbox-box svg {
+  color: #fff !important;
+  display: block !important;
+}
+
+.roles-ms-panel .p-multiselect-header .p-checkbox .p-checkbox-box[data-p-highlight="true"] svg path,
+.roles-ms-panel .p-multiselect-header .p-checkbox[data-p-highlight="true"] .p-checkbox-box svg path {
+  fill: currentColor !important;
+}
+
+/* Filter container takes the rest of the row */
+.roles-ms-panel .p-multiselect-filter-container {
+  flex: 1 !important;
+  position: relative !important;
+}
+
+.roles-ms-panel .p-multiselect-filter-container .p-inputtext {
+  width: 100% !important;
+  height: 40px !important;
+  border: 1.5px solid #c7d2fe !important;
+  border-radius: 10px !important;
+  padding: 8px 36px 8px 14px !important;
+  font-size: 13px !important;
+  background: #fff !important;
+  transition: all 0.15s ease !important;
+}
+
+.roles-ms-panel .p-multiselect-filter-container .p-inputtext:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+  outline: none !important;
+}
+
+.roles-ms-panel .p-multiselect-filter-icon,
+.roles-ms-panel .p-multiselect-close {
+  color: #64748b !important;
+  right: 12px !important;
+}
+
+/* Hide the default close (X) button — search input already has clear behaviour */
+.roles-ms-panel .p-multiselect-close {
+  display: none !important;
+}
+
+/* Items list */
+.roles-ms-panel .p-multiselect-items-wrapper {
+  padding: 6px !important;
+  max-height: 280px !important;
+}
+
+.roles-ms-panel .p-multiselect-item {
+  padding: 10px 12px !important;
+  border-radius: 8px !important;
+  gap: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #334155 !important;
+  margin-bottom: 2px !important;
+  transition: all 0.12s ease !important;
+}
+
+.roles-ms-panel .p-multiselect-item:hover {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+.roles-ms-panel .p-multiselect-item.p-highlight {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  font-weight: 600 !important;
+}
+
+/* Item checkbox */
+.roles-ms-panel .p-multiselect-item .p-checkbox .p-checkbox-box {
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 5px !important;
+  border: 2px solid #cbd5e1 !important;
+  background: #fff !important;
+  transition: all 0.15s ease !important;
+}
+
+.roles-ms-panel .p-multiselect-item:hover .p-checkbox .p-checkbox-box {
+  border-color: #6366f1 !important;
+}
+
+.roles-ms-panel .p-multiselect-item .p-checkbox .p-checkbox-box[data-p-highlight="true"],
+.roles-ms-panel .p-multiselect-item .p-checkbox[data-p-highlight="true"] .p-checkbox-box {
+  background: #6366f1 !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3) !important;
+}
+
+.roles-ms-panel .p-multiselect-item .p-checkbox .p-checkbox-box[data-p-highlight="true"] svg,
+.roles-ms-panel .p-multiselect-item .p-checkbox[data-p-highlight="true"] .p-checkbox-box svg {
+  color: #fff !important;
+  display: block !important;
+}
+
+.roles-ms-panel .p-multiselect-item .p-checkbox .p-checkbox-box[data-p-highlight="true"] svg path,
+.roles-ms-panel .p-multiselect-item .p-checkbox[data-p-highlight="true"] .p-checkbox-box svg path {
+  fill: currentColor !important;
+}
+
+/* Empty state */
+.roles-ms-panel .p-multiselect-empty-message {
+  padding: 24px 16px !important;
+  text-align: center !important;
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+

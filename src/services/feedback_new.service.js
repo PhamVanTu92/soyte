@@ -71,9 +71,10 @@ const getFeedbacks = async (queryOptions = {}) => {
 
   // filter theo facility_id qua survey_facilities → lấy survey_ids → filter feedbacks
   if (facility_id) {
+    // facility_id là VARCHAR(50) — giữ nguyên string
     const facilityIds = Array.isArray(facility_id)
-      ? facility_id.map(Number)
-      : String(facility_id).split(',').map(Number).filter(n => !isNaN(n));
+      ? facility_id.map(String)
+      : String(facility_id).split(',').map(s => s.trim()).filter(Boolean);
 
     const surveyFacilityRows = await db.SurveyFacility.findAll({
       where: { facility_id: { [Op.in]: facilityIds } },

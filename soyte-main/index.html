@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sở Y tế Hà Nội</title>
+  <meta name="description"
+    content="Cổng thông tin chính thức của Sở Y tế Hà Nội - Cung cấp thông tin y tế, dịch vụ công và hỗ trợ sức khỏe cộng đồng." />
+
+  <!-- Open Graph / Facebook / Zalo -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://suckhoethudo.vn/" />
+  <meta property="og:title" content="Sở Y tế Hà Nội - Cổng thông tin Y tế" />
+  <meta property="og:description"
+    content="Giải pháp quản lý y tế hiện đại, tra cứu cơ sở y tế và cung cấp dịch vụ công trực tuyến." />
+  <meta property="og:image" content="https://storage-vnportal.vnpt.vn/gov-hni/6749/soyte.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://suckhoethudo.vn/" />
+  <meta property="twitter:title" content="Sở Y tế Hà Nội - Cổng thông tin Y tế" />
+  <meta property="twitter:description"
+    content="Giải pháp quản lý y tế hiện đại, tra cứu cơ sở y tế và cung cấp dịch vụ công trực tuyến." />
+  <meta property="twitter:image" content="https://storage-vnportal.vnpt.vn/gov-hni/6749/soyte.png" />
+
+  <!-- Leaflet CSS for Maps -->
+  <link type="image/x-icon" rel="shortcut icon" href="https://storage-vnportal.vnpt.vn/gov-hni/1/Banner/favicon.png" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        container: {
+          center: true,
+          padding: '1rem',
+          screens: {
+            sm: '640px',
+            md: '768px',
+            lg: '1024px',
+            xl: '1240px',
+            '2xl': '1240px',
+          },
+        },
+        extend: {
+          colors: {
+            primary: {
+              50: "#f0f9ff",
+              100: "#e0f2fe",
+              500: "#0ea5e9",
+              600: "#0284c7", // Medical Blue
+              700: "#0369a1",
+              800: "#075985",
+              900: "#0c4a6e",
+            },
+            secondary: {
+              50: "#ecfdf5",
+              500: "#10b981", // Success Green
+              600: "#059669",
+            },
+          },
+          animation: {
+            "bounce-slow": "bounce 3s infinite",
+            shake: "shake 0.5s cubic-bezier(.36,.07,.19,.97) both",
+            "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+          },
+          keyframes: {
+            shake: {
+              "10%, 90%": { transform: "translate3d(-1px, 0, 0)" },
+              "20%, 80%": { transform: "translate3d(2px, 0, 0)" },
+              "30%, 50%, 70%": { transform: "translate3d(-4px, 0, 0)" },
+              "40%, 60%": { transform: "translate3d(4px, 0, 0)" },
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");
+
+    body {
+      font-family: "Roboto", sans-serif;
+    }
+
+    /* Tùy chỉnh thanh cuộn ngang mượt mà */
+    .horizontal-scroll-container {
+      display: flex;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      /* Firefox */
+      -ms-overflow-style: none;
+      /* IE/Edge */
+      cursor: grab;
+    }
+
+    .horizontal-scroll-container:active {
+      cursor: grabbing;
+    }
+
+    .horizontal-scroll-container::-webkit-scrollbar {
+      display: none;
+      /* Chrome/Safari */
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Hiệu ứng mờ ở hai đầu để báo hiệu còn dữ liệu */
+    .scroll-mask {
+      position: relative;
+    }
+
+    .scroll-mask::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 40px;
+      background: linear-gradient(to left, rgba(249, 250, 251, 1), transparent);
+      pointer-events: none;
+      z-index: 10;
+    }
+  </style>
+  <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.3.1",
+          "react/": "https://esm.sh/react@18.3.1/",
+          "react-dom": "https://esm.sh/react-dom@18.3.1",
+          "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+          "react-router-dom": "https://esm.sh/react-router-dom@6.23.1?external=react,react-dom",
+          "recharts": "https://esm.sh/recharts@2.12.7?external=react,react-dom",
+          "lucide-react": "https://esm.sh/lucide-react@0.395.0?external=react",
+          "leaflet": "https://esm.sh/leaflet@1.9.4",
+          "react-leaflet": "https://esm.sh/react-leaflet@4.2.1?external=react,react-dom,leaflet"
+        }
+      }
+    </script>
+  <link rel="stylesheet" href="/index.css" />
+  <script src="/runtime-config.js"></script>
+</head>
+
+<body class="bg-gray-50 text-slate-800 antialiased">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>

@@ -28,7 +28,7 @@ module.exports = (sequelize) => {
       onDelete: 'CASCADE',
     },
     facility_id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(50),   // social_facilities.id là VARCHAR(50)
       allowNull: false,
       references: { model: 'social_facilities', key: 'id' },
       onUpdate: 'CASCADE',

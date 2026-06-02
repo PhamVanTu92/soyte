@@ -3,6 +3,7 @@
 /**
  * Migration: create_survey_facilities
  * Join table Survey <-> SocialFacility (N-N)
+ * Lưu ý: social_facilities.id là VARCHAR(50), không phải INTEGER
  */
 
 const isPG = (seq) => (seq.options.dialect || '') === 'postgres';
@@ -12,9 +13,9 @@ module.exports = {
     if (isPG(sequelize)) {
       await sequelize.query(`
         CREATE TABLE IF NOT EXISTS "survey_facilities" (
-          "id"          SERIAL  NOT NULL,
-          "survey_id"   INTEGER NOT NULL,
-          "facility_id" INTEGER NOT NULL,
+          "id"          SERIAL        NOT NULL,
+          "survey_id"   INTEGER       NOT NULL,
+          "facility_id" VARCHAR(50)   NOT NULL,
           PRIMARY KEY ("id"),
           CONSTRAINT uq_survey_facility UNIQUE ("survey_id", "facility_id"),
           CONSTRAINT fk_sf_survey   FOREIGN KEY ("survey_id")
@@ -41,8 +42,8 @@ module.exports = {
         BEGIN
           CREATE TABLE [survey_facilities] (
             [id]          INT IDENTITY(1,1) NOT NULL,
-            [survey_id]   INT NOT NULL,
-            [facility_id] INT NOT NULL,
+            [survey_id]   INT          NOT NULL,
+            [facility_id] NVARCHAR(50) NOT NULL,
             CONSTRAINT PK_survey_facilities PRIMARY KEY ([id]),
             CONSTRAINT UQ_survey_facility   UNIQUE ([survey_id], [facility_id]),
             CONSTRAINT FK_sf_survey   FOREIGN KEY ([survey_id])

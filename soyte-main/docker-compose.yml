@@ -1,0 +1,11 @@
+services:
+  soyte-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_MODE: ${BUILD_MODE:-golive}
+    image: soyte-frontend:${BUILD_MODE:-golive}
+    ports:
+      - "${PORT:-8080}:80"
+    restart: unless-stopped

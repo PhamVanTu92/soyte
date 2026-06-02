@@ -1,0 +1,41 @@
+{
+  "name": "sở-y-tế-hà-nội---cổng-thông-tin",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode dev",
+    "build:dev": "vite build --mode dev",
+    "build:golive": "vite build --mode golive",
+    "preview": "vite preview",
+    "preview:golive": "vite preview --mode golive",
+    "type-check": "tsc --noEmit",
+    "inspect:feedbacks": "node scripts/inspect_feedback_apis.mjs"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "date-fns": "^4.1.0",
+    "docx": "^9.6.1",
+    "file-saver": "^2.0.5",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
+    "leaflet": "1.9.4",
+    "lucide-react": "0.395.0",
+    "primeicons": "^7.0.0",
+    "primereact": "^10.9.7",
+    "quill": "^2.0.3",
+    "react": "18.3.1",
+    "react-day-picker": "^9.14.0",
+    "react-dom": "18.3.1",
+    "react-leaflet": "4.2.1",
+    "react-router-dom": "6.23.1",
+    "recharts": "2.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.15",
+    "@vitejs/plugin-react": "^5.2.0",
+    "jsdom": "^27.4.0",
+    "typescript": "~5.8.3",
+    "vite": "^6.4.1"
+  }
+}

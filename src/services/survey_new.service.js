@@ -222,7 +222,8 @@ const setSurveyFacilities = async (surveyId, facilityIds) => {
   const survey = await db.Survey.findByPk(surveyId);
   if (!survey) throw new ApiError(404, 'Cuộc khảo sát không tồn tại');
 
-  const ids = [...new Set(facilityIds.map(Number).filter(n => !isNaN(n) && n > 0))];
+  // facility_id là VARCHAR(50) — giữ nguyên string, không ép kiểu Number
+  const ids = [...new Set(facilityIds.map(String).filter(s => s.trim() !== ''))];
 
   await db.SurveyFacility.destroy({ where: { survey_id: surveyId } });
 

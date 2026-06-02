@@ -1,0 +1,58 @@
+[
+  {
+    "endpoint": "list",
+    "method": "GET",
+    "url": "https://suckhoethudo.vn:7005/api/feedbacks?page=1&limit=1&type=reflect",
+    "requestBody": null,
+    "ok": false,
+    "error": "fetch failed"
+  },
+  {
+    "endpoint": "list-post",
+    "method": "POST",
+    "url": "https://suckhoethudo.vn:7005/api/feedbacks/list",
+    "requestBody": {
+      "type": "reflect",
+      "page": 1,
+      "limit": 1
+    },
+    "ok": false,
+    "error": "fetch failed"
+  },
+  {
+    "endpoint": "stats",
+    "method": "GET",
+    "url": "https://suckhoethudo.vn:7005/api/feedbacks/stats?type=reflect",
+    "requestBody": null,
+    "ok": false,
+    "error": "fetch failed"
+  },
+  {
+    "endpoint": "stats-post",
+    "method": "POST",
+    "url": "https://suckhoethudo.vn:7005/api/feedbacks/stats",
+    "requestBody": {
+      "type": "reflect"
+    },
+    "ok": false,
+    "error": "fetch failed"
+  },
+  {
+    "endpoint": "compare",
+    "method": "GET",
+    "url": "https://suckhoethudo.vn:7005/api/feedbacks/compare?type=reflect",
+    "requestBody": null,
+    "ok": false,
+    "error": "fetch failed"
+  },
+  {
+    "endpoint": "compare-post",
+    "method": "POST",
+    "url": "https://suckhoethudo.vn:7005/api/feedbacks/compare",
+    "requestBody": {
+      "type": "reflect"
+    },
+    "ok": false,
+    "error": "fetch failed"
+  }
+]
