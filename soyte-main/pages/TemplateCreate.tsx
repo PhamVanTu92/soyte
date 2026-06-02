@@ -396,9 +396,10 @@ const TemplateCreate: React.FC = () => {
             <h3 className="font-bold text-slate-700 text-xs uppercase tracking-widest mb-3">Mẫu khởi tạo</h3>
             <div className="space-y-2">
               {[
-                { key: "noitru",  label: "Hài lòng nội trú (Mẫu 1 - BYT)", icon: "pi-building" },
-                { key: "ngoaitru",label: "Hài lòng ngoại trú (Mẫu 2 - BYT)", icon: "pi-building" },
-                { key: "blank",   label: "Biểu mẫu trống", icon: "pi-file" },
+                { key: "noitru",    label: "Hài lòng nội trú (Mẫu 1 - BYT)",       icon: "pi-building" },
+                { key: "ngoaitru",  label: "Hài lòng ngoại trú (Mẫu 2 - BYT)",     icon: "pi-building" },
+                { key: "tiem_chung",label: "Tiêm chủng mở rộng (Mẫu 3 - BYT)",     icon: "pi-heart" },
+                { key: "blank",     label: "Biểu mẫu trống",                        icon: "pi-file" },
               ].map(p => (
                 <button key={p.key}
                   onClick={() => {

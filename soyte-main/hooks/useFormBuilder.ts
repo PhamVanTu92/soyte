@@ -51,6 +51,68 @@ const blankSection = (): FSection => ({
 const lk = (key: string, label: string) => makeLikert(key, label);
 
 export const PRESETS: Record<string, () => FormDraft> = {
+  tiem_chung: () => ({
+    name: 'Phiếu khảo sát sự hài lòng của người sử dụng dịch vụ tiêm chủng mở rộng',
+    org: 'Bộ Y tế', badge: 'MẪU SỐ 3',
+    description: 'Để nâng cao chất lượng dịch vụ tiêm chủng mở rộng, chúng tôi xin ý kiến của Ông/bà đối với dịch vụ tiêm chủng mà Ông/bà đã trải nghiệm.',
+    type: 'evaluate', status: true,
+    sections: [
+      { id: uid('s'), title: 'A. Khả năng tiếp cận', order_index: 0, questions: [
+        lk('A1','A1. Ông/Bà dễ dàng tiếp cận với điểm tiêm chủng.'),
+        lk('A2','A2. Lối đi, hành lang tại địa điểm tiêm chủng bằng phẳng, di chuyển dễ dàng.'),
+        lk('A3','A3. Các lối đi, hành lang bằng phẳng, an toàn, dễ đi.'),
+        lk('A4','A4. Hài lòng về thời gian tổ chức tiêm chủng mở rộng.'),
+        lk('A5','A5. Lịch tiêm chủng, loại vắc xin được thông báo rộng rãi trên loa truyền thanh hoặc tổ dân phố, nhân viên y tế thôn/khu phố trực tiếp thông báo.'),
+      ].map((q,i)=>({...q,order_index:i}))},
+      { id: uid('s'), title: 'B. Sự minh bạch thông tin và thủ tục tiêm chủng', order_index: 1, questions: [
+        lk('B1','B1. Quy trình, thủ tục hành chính rõ ràng, công khai, thuận tiện.'),
+        lk('B2','B2. Hài lòng về thời gian chờ tới lượt tiêm chủng.'),
+        lk('B3','B3. Được nhân viên y tế hỏi, khám và ghi chép thông tin về tình trạng sức khỏe, tiền sử dị ứng, tiền sử tiêm chủng.'),
+        lk('B4','B4. Được thông báo về loại vắc xin được tiêm, nước sản xuất, năm sản xuất/hạn sử dụng.'),
+        lk('B5','B5. Được nhân viên y tế thông báo tác dụng, liều lượng, đường dùng của vắc xin trước mỗi lần tiêm.'),
+        lk('B6','B6. Được nhân viên y tế thông báo/cho xem hộp/lọ vắc xin còn nguyên niêm phong nhãn mác hoặc còn đủ số liều.'),
+        lk('B7','B7. Được cung cấp đầy đủ thông tin về vắc xin, lịch tiêm và các khuyến cáo liên quan.'),
+        lk('B8','B8. Được nhân viên y tế thông báo về các phản ứng có thể gặp sau tiêm chủng và cách xử trí.'),
+      ].map((q,i)=>({...q,order_index:i}))},
+      { id: uid('s'), title: 'C. Cơ sở vật chất và trang thiết bị tiêm chủng', order_index: 2, questions: [
+        lk('C1', 'C1. Khu vực chờ trước, trong và theo dõi sau tiêm sạch sẽ, thoáng mát vào mùa hè; kín gió và ấm áp vào mùa đông.'),
+        lk('C2', 'C2. Khu vực chờ có đủ ghế ngồi.'),
+        lk('C3', 'C3. Có khu vực/bàn tư vấn, khám sàng lọc.'),
+        lk('C4', 'C4. Có khu vực/bàn tiêm chủng.'),
+        lk('C5', 'C5. Có phòng/khu vực theo dõi và xử trí phản ứng sau tiêm chủng.'),
+        lk('C6', 'C6. Vắc xin được bảo quản lạnh trong buổi tiêm chủng (phích vắc xin, tủ lạnh).'),
+        lk('C7', 'C7. Được sử dụng bơm kim tiêm riêng cho mỗi mũi tiêm.'),
+        lk('C8', 'C8. Có hộp chống sốc, phác đồ chống sốc treo tại nơi theo dõi, xử trí phản ứng sau tiêm chủng.'),
+        lk('C9', 'C9. Có thùng rác chứa chất thải y tế.'),
+        lk('C10','C10. Nhà vệ sinh thuận tiện, sử dụng tốt, sạch sẽ.'),
+        lk('C11','C11. Khuôn viên cơ sở tiêm chủng xanh, sạch, đẹp.'),
+        lk('C12','C12. Đảm bảo trật tự, phòng ngừa trộm cắp tại điểm tiêm chủng.'),
+      ].map((q,i)=>({...q,order_index:i}))},
+      { id: uid('s'), title: 'D. Thái độ ứng xử, năng lực chuyên môn của nhân viên y tế', order_index: 3, questions: [
+        lk('D1','D1. Nhân viên tiếp đón, hướng dẫn thủ tục niềm nở, nhiệt tình.'),
+        lk('D2','D2. Nhân viên phục vụ có lời nói, thái độ, giao tiếp đúng mực.'),
+        lk('D3','D3. Nhân viên y tế tư vấn tỉ mỉ, rõ ràng.'),
+        lk('D4','D4. Nhân viên y tế thao tác thành thạo, thuần thục khi thăm khám, tiêm chủng.'),
+        lk('D5','D5. Các thắc mắc của người dân (nếu có) được nhân viên y tế giải thích tận tình, thông tin rõ ràng, đầy đủ.'),
+      ].map((q,i)=>({...q,order_index:i}))},
+      { id: uid('s'), title: 'E. Kết quả cung cấp dịch vụ', order_index: 4, questions: [
+        { ...lk('E1','E1. Hài lòng với chất lượng dịch vụ tiêm chủng được cung cấp.'), order_index: 0 },
+        { ...lk('E2','E2. Hài lòng về lần sử dụng dịch vụ tiêm chủng này.'), order_index: 1 },
+        { ...lk('E3','E3. Được nhắc lịch cho lần tiêm tiếp theo.'), order_index: 2 },
+        { id: uid('q'), question_key: 'E4', type: 'single' as QuestionType,
+          label: 'E4. Nếu bản thân hoặc người thân có nhu cầu tiêm chủng, Ông/Bà có quay trở lại hoặc giới thiệu cho người khác đến không?',
+          required: false, order_index: 3, score_weight: 1,
+          options: [
+            { id: uid('o'), option_key: '1', label: 'Chắc chắn không bao giờ quay lại',                     order_index: 0 },
+            { id: uid('o'), option_key: '2', label: 'Muốn chuyển sang cơ sở khác',                           order_index: 1 },
+            { id: uid('o'), option_key: '3', label: 'Chắc chắn sẽ quay lại hoặc giới thiệu cho người khác', order_index: 2 },
+            { id: uid('o'), option_key: '4', label: 'Khác (ghi rõ)',                                         order_index: 3 },
+          ],
+        },
+      ]},
+    ],
+  }),
+
   blank: () => ({
     name: 'Biểu mẫu mới', description: '', org: '', badge: '',
     type: 'evaluate', status: true, sections: [blankSection()],
