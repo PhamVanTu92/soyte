@@ -20,7 +20,7 @@ const formatFacility = (f) => ({
   facility_id: f.id,
   name: f.name,
   address: f.address || null,
-  code: f.code || null,
+  category: f.category || null,
 });
 
 const formatSurvey = (survey, forms = [], facilities = []) => {
@@ -74,7 +74,7 @@ const getSurveys = async (queryOptions = {}) => {
     include: [{
       model: db.SocialFacility,
       as: 'facilities',
-      attributes: ['id', 'name', 'address', 'code'],
+      attributes: ['id', 'name', 'address', 'category'],
       through: { attributes: [] },
       required: false,
     }],
@@ -107,7 +107,7 @@ const getSurveyById = async (id) => {
     include: [{
       model: db.SocialFacility,
       as: 'facilities',
-      attributes: ['id', 'name', 'address', 'code'],
+      attributes: ['id', 'name', 'address', 'category'],
       through: { attributes: [] },
       required: false,
     }],
@@ -211,7 +211,7 @@ const getSurveyFacilities = async (surveyId) => {
     include: [{
       model: db.SocialFacility,
       as: 'facility',
-      attributes: ['id', 'name', 'address', 'code'],
+      attributes: ['id', 'name', 'address', 'category'],
     }],
   });
 

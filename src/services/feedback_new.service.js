@@ -168,7 +168,7 @@ const getSurveyFacilityStatus = async (surveyId) => {
     include: [{
       model: db.SocialFacility,
       as: 'facility',
-      attributes: ['id', 'name', 'address', 'code'],
+      attributes: ['id', 'name', 'address', 'category'],
     }],
   });
 
@@ -229,7 +229,7 @@ const getSurveyFacilityStatus = async (surveyId) => {
     facility_id: sf.facility_id,
     name: sf.facility?.name || null,
     address: sf.facility?.address || null,
-    code: sf.facility?.code || null,
+    category: sf.facility?.category || null,
     submitted: !!(facilityFeedbackMap[sf.facility_id]?.length),
     feedbacks: facilityFeedbackMap[sf.facility_id] || [],
   }));
