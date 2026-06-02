@@ -25,6 +25,7 @@ const modelsToLoad = [
   'Role',
   'DatasetType',
   'DatasetRecord',
+  'SurveyFacility',
 ];
 
 for (const modelName of modelsToLoad) {
@@ -146,6 +147,20 @@ db.Permission.belongsToMany(db.Role, {
   otherKey: 'role_id',
   as: 'roles',
   timestamps: false,
+});
+
+// --- Survey ↔ SocialFacility (N:N via survey_facilities) ---
+db.Survey.belongsToMany(db.SocialFacility, {
+  through: db.SurveyFacility,
+  foreignKey: 'survey_id',
+  otherKey: 'facility_id',
+  as: 'facilities',
+});
+db.SocialFacility.belongsToMany(db.Survey, {
+  through: db.SurveyFacility,
+  foreignKey: 'facility_id',
+  otherKey: 'survey_id',
+  as: 'surveys',
 });
 
 // ========= END OF CUSTOM ASSOCIATIONS =========

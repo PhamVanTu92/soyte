@@ -23,6 +23,8 @@ const tradingFacilityRoutes = require('./routes/tradingFacility.route');
 const roleRoutes = require('./routes/role.route');
 const bannerRoutes = require('./routes/banner.route');
 const datasetRoutes = require('./routes/dataset.route');
+const surveyNewRoutes = require('./routes/survey_new.route');
+const feedbackNewRoutes = require('./routes/feedback_new.route');
 const { initCronJobs } = require('./cron/scheduler');
 const errorHandler = require('./middlewares/error.middleware');
 
@@ -139,6 +141,9 @@ app.use('/api/trading-facilities', tradingFacilityRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/datasets', datasetRoutes);
+// ── New modules (parallel, không ghi đè cũ) ──────────────────────────────────
+app.use('/api/surveys-new', surveyNewRoutes);
+app.use('/api/feedbacks-new', feedbackNewRoutes);
 
 app.use(errorHandler);
 
