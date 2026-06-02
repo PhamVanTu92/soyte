@@ -240,7 +240,85 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
     }
   };
 
-  /* ── Render question ── */
+  /* ── Grid cell cho câu hỏi trong section "Thông tin" ─────────── */
+  const renderInfoQuestion = (q: FQuestion) => {
+    const val    = answers[q.question_key];
+    const hasErr = errors[q.question_key];
+    const today  = new Date().toISOString().split("T")[0];
+
+    // Date auto-fill today on first render
+    if (q.type === "date" && !val) {
+      setTimeout(() => setAnswer(q.question_key, today), 0);
+    }
+
+    return (
+      <div key={q.question_key} className="flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-slate-500 truncate">
+          {q.label.replace(/^[A-Z0-9]+[._]\s*/, "")}
+          {q.required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+
+        {/* Single choice → styled select */}
+        {(q.type === "single" || q.type === "multi") && (
+          <div className="relative">
+            <select
+              value={Array.isArray(val) ? (val[0] ?? "") : (val ?? "")}
+              onChange={e => setAnswer(q.question_key, e.target.value)}
+              className={`w-full px-3 py-2.5 text-sm border rounded-xl appearance-none bg-white pr-8 focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+                ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200"}`}>
+              <option value="">Chọn</option>
+              {q.options.map(o => (
+                <option key={o.option_key} value={o.option_key}>{o.label}</option>
+              ))}
+            </select>
+            <i className="pi pi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
+          </div>
+        )}
+
+        {/* Date */}
+        {q.type === "date" && (
+          <input type="date"
+            value={val ?? today}
+            onChange={e => setAnswer(q.question_key, e.target.value)}
+            className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+              ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
+          />
+        )}
+
+        {/* Text */}
+        {q.type === "text" && (
+          <input type="text"
+            value={val ?? ""}
+            onChange={e => setAnswer(q.question_key, e.target.value)}
+            placeholder="Nhập nội dung"
+            className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+              ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
+          />
+        )}
+
+        {/* Number */}
+        {q.type === "number" && (
+          <input type="number"
+            value={val ?? ""}
+            onChange={e => setAnswer(q.question_key, e.target.value)}
+            placeholder="Nhập số"
+            className={`w-full px-3 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+              ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
+          />
+        )}
+
+        {hasErr && <p className="text-[11px] text-red-500">Vui lòng điền thông tin này</p>}
+      </div>
+    );
+  };
+
+/* ── Detect info section (Thông tin chung / Thông tin người bệnh) ── */
+  const isInfoSection = (sec: FSection) => {
+    const t = (sec.title ?? "").toLowerCase();
+    return t.includes("thông tin") || t.includes("thong tin");
+  };
+
+/* ── Render question ── */
   const renderQuestion = (q: FQuestion, si: number) => {
     const val   = answers[q.question_key];
     const hasErr = errors[q.question_key];
@@ -395,9 +473,17 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key }) => {
 
               {/* Questions */}
               {isOpen && (
-                <div className="px-5 py-2">
-                  {sec.questions.map(q => renderQuestion(q, si))}
-                </div>
+                isInfoSection(sec) ? (
+                  /* Grid layout cho section thông tin */
+                  <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {sec.questions.map(q => renderInfoQuestion(q))}
+                  </div>
+                ) : (
+                  /* Layout 1 cột cho section khảo sát */
+                  <div className="px-5 py-2">
+                    {sec.questions.map(q => renderQuestion(q, si))}
+                  </div>
+                )
               )}
             </div>
           );
