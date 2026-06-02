@@ -1,7 +1,6 @@
 # ─────────────────────────────────────────────────────────────────
 # Dockerfile.combined — Frontend SPA
 # Nhận VITE_* qua build ARG → tự tạo .env file → build Vite
-# File .env.dev / .env.golive bị gitignore nên KHÔNG dùng git để deploy
 # ─────────────────────────────────────────────────────────────────
 
 # Stage 1: Build
@@ -9,10 +8,11 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
-
+# Copy toàn bộ project (bao gồm package.json, lockfile, source)
 COPY . .
+
+# Cài dependencies (npm install để không cần lockfile cứng)
+RUN npm install
 
 # ── Build mode: dev (UAT) hoặc golive (Production) ───────────────
 ARG BUILD_MODE=dev
@@ -22,11 +22,10 @@ ARG VITE_API_URL=http://localhost:3001
 ARG VITE_PUBLIC_URL=http://localhost:3002
 
 # Tạo file .env tương ứng với BUILD_MODE từ ARG
-# (thay thế file gitignored — không cần tạo thủ công trên server)
 RUN ENV_FILE=".env.${BUILD_MODE}" && \
     echo "VITE_API_URL=${VITE_API_URL}" > $ENV_FILE && \
     echo "VITE_PUBLIC_URL=${VITE_PUBLIC_URL}" >> $ENV_FILE && \
-    echo "[build] $ENV_FILE:" && cat $ENV_FILE
+    echo "[build] Written $ENV_FILE:" && cat $ENV_FILE
 
 RUN if [ "$BUILD_MODE" = "golive" ]; \
     then npm run build:golive; \
