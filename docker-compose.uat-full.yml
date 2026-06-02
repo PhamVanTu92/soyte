@@ -2,9 +2,9 @@ version: '3.9'
 
 # ── UAT Full Stack — Backend + Frontend chung 1 compose ──────────
 #
-# Truy cập:  http://<server-ip>:3001   → Frontend (SPA)
-#            http://<server-ip>:3001/api → API Backend (proxy qua nginx)
-#            http://<server-ip>:3001/api-docs → Swagger UI
+# Backend  : http://160.30.252.42:3001  (API)
+# Frontend : http://160.30.252.42:3002  (SPA)
+# Swagger  : http://160.30.252.42:3001/api-docs
 #
 # Dùng:
 #   docker-compose -f docker-compose.uat-full.yml --env-file .env.uat up -d --build
@@ -20,8 +20,8 @@ services:
     image: soyte-backend:uat
     container_name: soyte-backend-uat
     restart: unless-stopped
-    expose:
-      - "3000"          # chỉ expose nội bộ, nginx proxy
+    ports:
+      - "0.0.0.0:${BACKEND_PORT:-3001}:3000"
     environment:
       PORT: 3000
       NODE_ENV: uat
@@ -38,8 +38,8 @@ services:
       JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-1d}"
 
       ALLOWED_ORIGINS: "*"
-      FRONTEND_URL:    "${FRONTEND_URL:-http://localhost:3001}"
-      APP_BASE_URL:    "${APP_BASE_URL:-http://localhost:3001}"
+      FRONTEND_URL:    "http://160.30.252.42:3002"
+      APP_BASE_URL:    "http://160.30.252.42:3001"
 
       EMAIL_HOST: "${EMAIL_HOST}"
       EMAIL_PORT: "${EMAIL_PORT:-587}"
@@ -49,36 +49,28 @@ services:
       EXPORT_MAX_ROWS: "${EXPORT_MAX_ROWS:-1000}"
       STATS_MAX_FETCH: "${STATS_MAX_FETCH:-1000}"
 
-      SWAGGER_SERVER_URL: "http://${SERVER_IP:-localhost}:3001"
+      SWAGGER_SERVER_URL: "http://160.30.252.42:3001"
 
     volumes:
       - uploads_uat_data:/app/uploads
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    networks:
-      - soyte_uat_net
 
-  # ── Frontend SPA + Nginx Reverse Proxy ───────────────────────────
+  # ── Frontend SPA (Nginx tĩnh, không proxy) ───────────────────────
   frontend:
     build:
       context: ./soyte-main
-      dockerfile: Dockerfile.combined
+      dockerfile: Dockerfile        # Dùng Dockerfile gốc (nginx tĩnh)
       args:
-        BUILD_MODE: uat
+        BUILD_MODE: dev             # mode=dev → load .env.dev → VITE_API_URL=http://160.30.252.42:3001
     image: soyte-frontend:uat
     container_name: soyte-frontend-uat
     restart: unless-stopped
     ports:
-      - "0.0.0.0:${APP_PORT:-3001}:80"
+      - "0.0.0.0:${FRONTEND_PORT:-3002}:80"
     depends_on:
       - backend
-    networks:
-      - soyte_uat_net
 
 volumes:
   uploads_uat_data:
     driver: local
-
-networks:
-  soyte_uat_net:
-    driver: bridge

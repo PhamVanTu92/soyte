@@ -2,9 +2,8 @@ version: '3.9'
 
 # ── Production Full Stack — Backend + Frontend chung 1 compose ───
 #
-# Truy cập:  http://<domain>/        → Frontend (SPA)
-#            http://<domain>/api     → API Backend (proxy qua nginx)
-#            http://<domain>/api-docs → Swagger UI
+# Backend  : https://backend.suckhoethudo.vn  (qua reverse proxy / Nginx ngoài)
+# Frontend : https://suckhoethudo.vn          (qua reverse proxy / Nginx ngoài)
 #
 # Dùng:
 #   docker-compose -f docker-compose.prod-full.yml --env-file .env up -d --build
@@ -20,8 +19,8 @@ services:
     image: soyte-backend:latest
     container_name: soyte-backend
     restart: unless-stopped
-    expose:
-      - "3000"          # chỉ expose nội bộ, nginx proxy
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-3000}:3000"   # reverse proxy ngoài trỏ vào đây
     environment:
       PORT: 3000
       NODE_ENV: production
@@ -37,9 +36,9 @@ services:
       JWT_SECRET:     "${JWT_SECRET}"
       JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-7d}"
 
-      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS}"
-      FRONTEND_URL:    "${FRONTEND_URL}"
-      APP_BASE_URL:    "${APP_BASE_URL}"
+      ALLOWED_ORIGINS: "https://suckhoethudo.vn"
+      FRONTEND_URL:    "https://suckhoethudo.vn"
+      APP_BASE_URL:    "https://backend.suckhoethudo.vn"
 
       EMAIL_HOST: "${EMAIL_HOST}"
       EMAIL_PORT: "${EMAIL_PORT:-587}"
@@ -49,36 +48,26 @@ services:
       EXPORT_MAX_ROWS: "${EXPORT_MAX_ROWS:-5000}"
       STATS_MAX_FETCH: "${STATS_MAX_FETCH:-2000}"
 
-      SWAGGER_SERVER_URL: "${SWAGGER_SERVER_URL}"
+      SWAGGER_SERVER_URL: "https://backend.suckhoethudo.vn"
 
     volumes:
       - uploads_data:/app/uploads
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    networks:
-      - soyte_net
 
-  # ── Frontend SPA + Nginx Reverse Proxy ───────────────────────────
+  # ── Frontend SPA (Nginx tĩnh) ─────────────────────────────────────
   frontend:
     build:
       context: ./soyte-main
-      dockerfile: Dockerfile.combined
+      dockerfile: Dockerfile        # Dùng Dockerfile gốc (nginx tĩnh)
       args:
-        BUILD_MODE: prod
+        BUILD_MODE: golive          # mode=golive → load .env.golive → VITE_API_URL=https://backend.suckhoethudo.vn
     image: soyte-frontend:latest
     container_name: soyte-frontend
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${APP_PORT:-8080}:80"   # Nginx/Caddy bên ngoài trỏ vào đây
-    depends_on:
-      - backend
-    networks:
-      - soyte_net
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"    # reverse proxy ngoài trỏ vào đây
 
 volumes:
   uploads_data:
     driver: local
-
-networks:
-  soyte_net:
-    driver: bridge
