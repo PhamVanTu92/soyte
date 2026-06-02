@@ -26,6 +26,10 @@ const modelsToLoad = [
   'DatasetType',
   'DatasetRecord',
   'SurveyFacility',
+  // Form structure (normalized)
+  'FormSection',
+  'FormQuestion',
+  'FormOption',
 ];
 
 for (const modelName of modelsToLoad) {
@@ -162,6 +166,28 @@ db.SocialFacility.belongsToMany(db.Survey, {
   otherKey: 'survey_id',
   as: 'surveys',
 });
+
+// --- Form chuẩn hóa (Form → FormSection → FormQuestion → FormOption) ---
+db.Form.hasMany(db.FormSection, {
+  foreignKey: 'form_id',
+  as: 'sections',
+  onDelete: 'CASCADE',
+});
+db.FormSection.belongsTo(db.Form, { foreignKey: 'form_id', as: 'form' });
+
+db.FormSection.hasMany(db.FormQuestion, {
+  foreignKey: 'section_id',
+  as: 'questions',
+  onDelete: 'CASCADE',
+});
+db.FormQuestion.belongsTo(db.FormSection, { foreignKey: 'section_id', as: 'section' });
+
+db.FormQuestion.hasMany(db.FormOption, {
+  foreignKey: 'question_id',
+  as: 'options',
+  onDelete: 'CASCADE',
+});
+db.FormOption.belongsTo(db.FormQuestion, { foreignKey: 'question_id', as: 'question' });
 
 // ========= END OF CUSTOM ASSOCIATIONS =========
 
