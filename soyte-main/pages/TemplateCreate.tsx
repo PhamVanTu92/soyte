@@ -266,7 +266,7 @@ const TemplateCreate: React.FC = () => {
   const {
     draft, setField, loading, fetching, preview, setPreview,
     loadPreset,
-    addSection, updateSection, removeSection, moveSection,
+    addSection, addInfoSection, updateSection, removeSection, moveSection,
     addQuestion, updateQuestion, removeQuestion, moveQuestion,
     addOption, updateOption, removeOption,
     save, sectionCount, questionCount,
@@ -382,10 +382,16 @@ const TemplateCreate: React.FC = () => {
             />
           ))}
 
-          <button onClick={addSection}
-            className="w-full py-3 border-2 border-dashed border-primary-200 rounded-2xl text-primary-600 hover:bg-primary-50 hover:border-primary-400 transition-all font-semibold flex items-center justify-center gap-2">
-            <Plus size={16}/> Thêm phần (Section)
-          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button onClick={addSection}
+              className="w-full py-3 border-2 border-dashed border-primary-200 rounded-2xl text-primary-600 hover:bg-primary-50 hover:border-primary-400 transition-all font-semibold flex items-center justify-center gap-2">
+              <Plus size={16}/> Thêm phần (Section)
+            </button>
+            <button onClick={addInfoSection}
+              className="w-full py-3 border-2 border-dashed border-secondary-200 rounded-2xl text-secondary-700 hover:bg-secondary-50 hover:border-secondary-400 transition-all font-semibold flex items-center justify-center gap-2">
+              <Plus size={16}/> Thêm phần Thông tin (trường dữ liệu)
+            </button>
+          </div>
         </div>
 
         {/* RIGHT: Sidebar */}

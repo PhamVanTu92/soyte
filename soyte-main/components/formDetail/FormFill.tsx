@@ -11,6 +11,19 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/api";
 import { Toast } from "primereact/toast";
+import { surveyNewService } from "@/services/surveyNewService";
+import { socialFacilitiesService } from "@/services/socialFacilitiesService";
+
+interface FacilityOpt { id: string; name: string; address?: string; category?: string; }
+
+/** Một câu hỏi info được coi là trường chọn cơ sở y tế (sẽ thay bằng bộ chọn cơ sở chung) */
+const isFacilityQuestion = (q: { question_key?: string; label?: string }) => {
+  const k = (q.question_key ?? "").toLowerCase();
+  const l = (q.label ?? "").toLowerCase();
+  return /(^|_)(ten_tyt|ten_bv|ma_bv|co_so|coso|facility|don_vi|donvi|tytyt)/.test(k)
+    || l.includes("trạm y tế") || l.includes("bệnh viện")
+    || l.includes("cơ sở") || l.includes("mã bệnh viện") || l.includes("đơn vị");
+};
 
 /* ── Types ─────────────────────────────────────────────────── */
 type QType = "likert" | "single" | "multi" | "text" | "textarea" | "number" | "date";
@@ -44,11 +57,11 @@ const LikertInput: React.FC<{
         const selected = value === o.option_key;
         return (
           <label key={o.option_key}
-            className="flex-1 min-w-[72px] text-center cursor-pointer select-none"
+            className="flex-1 min-w-[56px] text-center cursor-pointer select-none"
             title={o.label}>
             <input type="radio" name={qKey} value={o.option_key} className="hidden"
               checked={selected} onChange={() => onChange(o.option_key)} />
-            <div className={`px-2 py-3 rounded-xl border-2 text-xs leading-tight transition-all
+            <div className={`px-2 py-2 rounded-lg border text-[11px] leading-tight transition-all
               ${selected
                 ? isZero
                   ? "bg-slate-500 border-slate-500 text-white shadow-md"
@@ -57,10 +70,10 @@ const LikertInput: React.FC<{
                   ? "border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-400 hover:bg-slate-100"
                   : "border-slate-200 bg-white text-slate-600 hover:border-primary-400 hover:bg-primary-50"
               }`}>
-              <div className={`text-2xl font-black leading-none mb-1 ${selected ? "text-white" : isZero ? "text-slate-400" : "text-primary-600"}`}>
+              <div className={`text-lg font-black leading-none mb-0.5 ${selected ? "text-white" : isZero ? "text-slate-400" : "text-primary-600"}`}>
                 {o.option_key}
               </div>
-              <div className="text-[11px] leading-tight px-0.5">{o.label}</div>
+              <div className="text-[10px] leading-tight px-0.5">{o.label}</div>
             </div>
           </label>
         );
@@ -93,7 +106,7 @@ const ChoiceInput: React.FC<{
         const sel = isSelected(o.option_key);
         return (
           <label key={o.option_key}
-            className={`flex items-center gap-3 px-4 py-3.5 border-2 rounded-xl cursor-pointer transition-all text-[15px]
+            className={`flex items-center gap-3 px-3.5 py-2.5 border rounded-lg cursor-pointer transition-all text-sm
               ${sel
                 ? "bg-primary-50 border-primary-500 text-primary-900 font-medium"
                 : "bg-white border-slate-200 text-slate-700 hover:border-primary-300 hover:bg-slate-50"
@@ -137,6 +150,46 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
   const [submitting,   setSubmitting]   = useState(false);
   const [openSection,  setOpenSection]  = useState<number | null>(0);
 
+  /* ── Cơ sở y tế ───────────────────────────────────────────────── */
+  const userInfo = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("user_info") || "{}"); }
+    catch { return {}; }
+  }, []);
+  const isLoggedIn  = Boolean(userInfo?.id);
+  const assignedUnit = userInfo?.unit ? String(userInfo.unit) : "";
+
+  const [facilities,   setFacilities]   = useState<FacilityOpt[]>([]);
+  const [facLoading,   setFacLoading]   = useState(false);
+  const [facilityId,   setFacilityId]   = useState<string>("");
+  const [facilityName, setFacilityName] = useState<string>("");
+  const [facError,     setFacError]     = useState(false);
+  // Người đăng nhập có cơ sở gán sẵn → khóa lựa chọn theo cơ sở đó
+  const lockedToUnit = isLoggedIn && !!assignedUnit;
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // 1) Người đăng nhập có cơ sở gán → tự lấy theo cơ sở đó
+      if (lockedToUnit) {
+        setFacilityId(assignedUnit);
+        try {
+          const fac = await socialFacilitiesService.getById(assignedUnit);
+          if (!cancelled && fac) setFacilityName(fac.name ?? assignedUnit);
+        } catch { if (!cancelled) setFacilityName(assignedUnit); }
+        return;
+      }
+      // 2) Người khảo sát không đăng nhập → chọn từ danh sách cơ sở của cuộc khảo sát
+      if (!survey_key) return;
+      setFacLoading(true);
+      try {
+        const list = await surveyNewService.getSurveyFacilities(survey_key);
+        if (!cancelled) setFacilities(Array.isArray(list) ? list : []);
+      } catch { /* ignore */ }
+      finally { if (!cancelled) setFacLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [survey_key, lockedToUnit, assignedUnit]);
+
   /* Scroll lên đầu trang khi form load */
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -152,6 +205,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
     let total = 0, filled = 0;
     sections.forEach(sec =>
       sec.questions.forEach(q => {
+        if (isFacilityQuestion(q)) return;
         total++;
         const v = answers[q.question_key];
         if (v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && v.length === 0)) filled++;
@@ -168,9 +222,13 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
     let valid = true;
 
     if (!creatorName.trim()) { setNameError(true); valid = false; }
+    // Cơ sở y tế bắt buộc khi có danh sách cơ sở (người không đăng nhập) hoặc chưa khóa
+    const needFacility = lockedToUnit || facilities.length > 0;
+    if (needFacility && !facilityId) { setFacError(true); valid = false; }
 
     sections.forEach((sec, si) => {
       sec.questions.forEach(q => {
+        if (isFacilityQuestion(q)) return; // cơ sở xử lý riêng bằng bộ chọn
         if (!q.required) return;
         const v = answers[q.question_key];
         const empty = v === undefined || v === null || v === "" ||
@@ -198,8 +256,6 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
 
     setSubmitting(true);
     try {
-      const userInfo = JSON.parse(localStorage.getItem("user_info") || "{}");
-
       // Build submission_data theo format FeedbackSection
       const submission_data = sections.map(sec => ({
         title: sec.title,
@@ -229,11 +285,16 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
         creator_name:    creatorName.trim() || "Ẩn danh",
         type:            type || "evaluate",
         status:          "pending",
-        info:            { title: name, description, ...Object.fromEntries(
-                            Object.entries(answers).filter(([k]) =>
-                              sections.flatMap(s => s.questions.map(q => q.question_key)).includes(k)
-                            )
-                          )},
+        info:            {
+                            title: name, description,
+                            // Cơ sở y tế dạng { key: id, value: name } để báo cáo map đúng đơn vị
+                            ...(facilityId ? { "0": { key: "0", value: { key: facilityId, value: facilityName || facilityId } } } : {}),
+                            ...Object.fromEntries(
+                              Object.entries(answers).filter(([k]) =>
+                                sections.flatMap(s => s.questions.map(q => q.question_key)).includes(k)
+                              )
+                            ),
+                          },
         submission_data,
       });
 
@@ -363,7 +424,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
             value={val ?? ""}
             onChange={e => setAnswer(q.question_key, e.target.value)}
             placeholder="Nhập câu trả lời của bạn…"
-            className={`mt-3 ml-9 w-[calc(100%-2.25rem)] px-4 py-3 text-[15px] border-2 rounded-xl resize-y min-h-[90px] focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+            className={`mt-3 ml-9 w-[calc(100%-2.25rem)] px-3.5 py-2.5 text-sm border rounded-lg resize-y min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary-300 transition
               ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
           />
         )}
@@ -372,7 +433,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
             value={val ?? ""}
             onChange={e => setAnswer(q.question_key, e.target.value)}
             placeholder="Nhập câu trả lời…"
-            className={`mt-3 ml-9 w-[calc(100%-2.25rem)] px-4 py-3 text-[15px] border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+            className={`mt-3 ml-9 w-[calc(100%-2.25rem)] px-3.5 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 transition
               ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
           />
         )}
@@ -381,7 +442,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
             value={val ?? ""}
             onChange={e => setAnswer(q.question_key, e.target.value)}
             placeholder="0"
-            className={`mt-3 ml-9 w-48 px-4 py-3 text-[15px] border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+            className={`mt-3 ml-9 w-48 px-3.5 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 transition
               ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
           />
         )}
@@ -389,7 +450,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
           <input type="date"
             value={val ?? ""}
             onChange={e => setAnswer(q.question_key, e.target.value)}
-            className={`mt-3 ml-9 px-4 py-3 text-[15px] border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+            className={`mt-3 ml-9 px-3.5 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 transition
               ${hasErr ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
           />
         )}
@@ -452,10 +513,53 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
           {nameError && <p className="text-[11px] text-red-500 mt-1">Vui lòng nhập họ tên</p>}
         </div>
 
+        {/* ── Cơ sở y tế ── */}
+        {(lockedToUnit || facilities.length > 0 || facLoading) && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-5">
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+              Cơ sở khám chữa bệnh <span className="text-red-500">*</span>
+            </label>
+
+            {lockedToUnit ? (
+              /* Người đăng nhập: tự động theo cơ sở được gán, không cho đổi */
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700">
+                <i className="pi pi-building text-primary-500" />
+                <span className="font-medium">{facilityName || assignedUnit}</span>
+                <span className="ml-auto text-[11px] text-slate-400 italic">Theo tài khoản đăng nhập</span>
+              </div>
+            ) : facLoading ? (
+              <div className="px-4 py-3 text-sm text-slate-400 flex items-center gap-2">
+                <i className="pi pi-spin pi-spinner" /> Đang tải danh sách cơ sở…
+              </div>
+            ) : (
+              <div className="relative">
+                <select
+                  value={facilityId}
+                  onChange={e => {
+                    const fid = e.target.value;
+                    setFacilityId(fid);
+                    setFacError(false);
+                    setFacilityName(facilities.find(f => String(f.id) === fid)?.name ?? "");
+                  }}
+                  className={`w-full px-4 py-3 text-sm border rounded-xl appearance-none bg-white pr-9 focus:outline-none focus:ring-2 focus:ring-primary-300 transition
+                    ${facError ? "border-red-300 bg-red-50" : "border-slate-200"}`}>
+                  <option value="">— Chọn cơ sở khám chữa bệnh —</option>
+                  {facilities.map(f => (
+                    <option key={f.id} value={String(f.id)}>{f.name}</option>
+                  ))}
+                </select>
+                <i className="pi pi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
+              </div>
+            )}
+            {facError && <p className="text-[11px] text-red-500 mt-1">Vui lòng chọn cơ sở</p>}
+          </div>
+        )}
+
         {/* ── Sections ── */}
         {sections.map((sec, si) => {
           const isOpen = openSection === null || openSection === si;
-          const answeredInSection = sec.questions.filter(q => {
+          const visibleQuestions = sec.questions.filter(q => !isFacilityQuestion(q));
+          const answeredInSection = visibleQuestions.filter(q => {
             const v = answers[q.question_key];
             return v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && v.length === 0);
           }).length;
@@ -483,7 +587,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
                 <span className="font-bold text-base">{sec.title}</span>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <span className="text-xs font-mono bg-white/20 px-2.5 py-0.5 rounded-full">
-                    {answeredInSection}/{sec.questions.length}
+                    {answeredInSection}/{visibleQuestions.length}
                   </span>
                   <i className={`pi ${isOpen ? "pi-chevron-up" : "pi-chevron-down"} text-sm opacity-80`} />
                 </div>
@@ -494,7 +598,7 @@ const FormFill: React.FC<Props> = ({ id, type, formJson, survey_key, source = "w
                 isInfoSection(sec) ? (
                   /* Grid layout cho section thông tin */
                   <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {sec.questions.map(q => renderInfoQuestion(q))}
+                    {sec.questions.filter(q => !isFacilityQuestion(q)).map(q => renderInfoQuestion(q))}
                   </div>
                 ) : (
                   /* Layout 1 cột cho section khảo sát */

@@ -47,6 +47,35 @@ const blankSection = (): FSection => ({
     required: false, order_index: 0, score_weight: 1, options: [] }],
 });
 
+/* ── Section "Thông tin" với các trường dữ liệu thường dùng ─────── */
+const opt = (labels: string[]): FOption[] =>
+  labels.map((l, i) => ({ id: uid('o'), option_key: String(i + 1), label: l, order_index: i }));
+
+const infoQ = (
+  key: string, label: string, type: QuestionType,
+  options: FOption[] = [], required = false,
+): FQuestion => ({
+  id: uid('q'), question_key: key, type, label, required,
+  order_index: 0, score_weight: 1, options,
+});
+
+/** Tạo section "Thông tin người trả lời" với các trường dữ liệu mẫu (có thể sửa/xóa) */
+const infoSection = (): FSection => ({
+  id: uid('s'), title: 'Thông tin người trả lời', order_index: 0,
+  questions: [
+    infoQ('ten_co_so',    'Tên cơ sở y tế',                  'text'),
+    infoQ('ngay_dien',    'Ngày điền phiếu',                 'date'),
+    infoQ('nguoi_dien',   'Người phỏng vấn / điền phiếu',    'single',
+      opt(['Người bệnh tự điền (hoặc người nhà)', 'Nhân viên của cơ sở', 'Đoàn giám sát', 'Tổ chức độc lập', 'Khác'])),
+    infoQ('gioi_tinh',    'Giới tính',                       'single', opt(['Nam', 'Nữ', 'Khác']), true),
+    infoQ('tuoi',         'Tuổi (hoặc năm sinh)',            'number'),
+    infoQ('so_dt',        'Số di động liên hệ',              'text'),
+    infoQ('nguoi_tra_loi','Người trả lời là',               'single', opt(['Người bệnh', 'Người nhà'])),
+    infoQ('noi_song',     'Nơi sinh sống hiện nay',          'single', opt(['Thành thị', 'Nông thôn', 'Vùng sâu, xa khó khăn'])),
+    infoQ('muc_song',     'Phân loại mức sống của gia đình', 'single', opt(['Nghèo', 'Cận nghèo', 'Khác'])),
+  ].map((q, i) => ({ ...q, order_index: i })),
+});
+
 /* ── Presets (BYT) ──────────────────────────────────────────────── */
 const lk = (key: string, label: string) => makeLikert(key, label);
 
@@ -318,6 +347,11 @@ export const useFormBuilder = (
       { id: uid('s'), title: `Phần ${d.sections.length + 1}`, order_index: d.sections.length, questions: [] }],
   }));
 
+  /** Thêm 1 section "Thông tin người trả lời" với các trường dữ liệu mẫu */
+  const addInfoSection = () => setDraft(d => ({
+    ...d, sections: [...d.sections, { ...infoSection(), order_index: d.sections.length }],
+  }));
+
   const updateSection = (sid: string, field: 'title', val: string) =>
     setDraft(d => ({ ...d, sections: d.sections.map(s => s.id === sid ? { ...s, [field]: val } : s) }));
 
@@ -453,7 +487,7 @@ export const useFormBuilder = (
   return {
     draft, setField, loading, fetching, preview, setPreview,
     loadPreset,
-    addSection, updateSection, removeSection, moveSection,
+    addSection, addInfoSection, updateSection, removeSection, moveSection,
     addQuestion, updateQuestion, removeQuestion, moveQuestion,
     addOption, updateOption, removeOption,
     save, sectionCount, questionCount,
